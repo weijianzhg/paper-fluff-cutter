@@ -6,11 +6,11 @@ from .base import BaseLLMProvider
 
 
 class OpenAIProvider(BaseLLMProvider):
-    """OpenAI GPT-4o provider with native PDF support."""
+    """OpenAI GPT-5.2 provider with native PDF support."""
 
     @property
     def default_model(self) -> str:
-        return "gpt-4o"
+        return "gpt-5.2"
 
     @property
     def provider_name(self) -> str:

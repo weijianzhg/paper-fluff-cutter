@@ -39,9 +39,7 @@ def print_analysis(title: str, analysis: str, model_info: str) -> None:
     print(format_analysis(title, analysis, model_info))
 
 
-def save_analysis(
-    title: str, analysis: str, model_info: str, output_path: str
-) -> None:
+def save_analysis(title: str, analysis: str, model_info: str, output_path: str) -> None:
     """
     Save the formatted analysis to a file.
 
