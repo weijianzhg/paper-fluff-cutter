@@ -1,5 +1,7 @@
 # Paper Fluff Cutter
 
+[![PyPI version](https://badge.fury.io/py/fluff-cutter.svg)](https://pypi.org/project/fluff-cutter/)
+
 A CLI tool that cuts through academic paper fluff to extract what actually matters.
 
 Most research has close to zero value. This tool uses multimodal LLMs to analyze papers and answer the three questions every paper should be able to answer:
@@ -10,13 +12,17 @@ Most research has close to zero value. This tool uses multimodal LLMs to analyze
 
 ## Installation
 
-### Prerequisites
+```bash
+pip install fluff-cutter
+```
 
-- Python 3.10+
+Requires Python 3.10+.
 
-### Install the tool
+### Development install
 
 ```bash
+git clone https://github.com/weijianzhg/paper-fluff-cutter.git
+cd paper-fluff-cutter
 pip install -e .
 ```
 
