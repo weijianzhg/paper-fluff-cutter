@@ -16,7 +16,7 @@ from .config import (
     save_config,
 )
 from .output import print_analysis, save_analysis
-from .pdf import get_pdf_filename, read_pdf_as_base64
+from .pdf import DEFAULT_MAX_PAGES, get_pdf_filename, read_pdf_as_base64
 from .providers import AnthropicProvider, OpenAIProvider
 
 PROVIDERS = {
@@ -195,7 +195,19 @@ def init():
     type=click.Path(),
     help="Save output to file instead of printing",
 )
-def analyze(paper_path: str, provider: str | None, model: str | None, output: str | None):
+@click.option(
+    "--max-pages",
+    type=int,
+    default=None,
+    help=f"Maximum pages to analyze (default: auto-truncate at {DEFAULT_MAX_PAGES} if needed)",
+)
+def analyze(
+    paper_path: str,
+    provider: str | None,
+    model: str | None,
+    output: str | None,
+    max_pages: int | None,
+):
     """Analyze an academic paper and extract its core value."""
     # Check configuration
     if not is_configured():
@@ -231,20 +243,39 @@ def analyze(paper_path: str, provider: str | None, model: str | None, output: st
     # Read PDF
     click.echo("Reading PDF...")
     try:
-        pdf_base64 = read_pdf_as_base64(paper_path)
+        pdf_base64, total_pages, was_truncated = read_pdf_as_base64(paper_path, max_pages)
         filename = get_pdf_filename(paper_path)
-        click.echo("  PDF loaded successfully")
+        if was_truncated:
+            click.echo(f"  PDF truncated: analyzing first {max_pages} of {total_pages} pages")
+        else:
+            click.echo(f"  PDF loaded successfully ({total_pages} pages)")
     except Exception as e:
         click.echo(f"Error reading PDF: {e}", err=True)
         sys.exit(1)
 
-    # Analyze the paper
+    # Analyze the paper (with auto-retry on token limit)
     click.echo("Analyzing paper (this may take a minute)...")
     try:
         result = analyze_paper(llm_provider, pdf_base64, filename)
     except Exception as e:
-        click.echo(f"Error during analysis: {e}", err=True)
-        sys.exit(1)
+        error_msg = str(e)
+        # Check if it's a token limit error and we haven't already truncated
+        if "too long" in error_msg.lower() and "token" in error_msg.lower() and not was_truncated:
+            click.echo()
+            click.echo(
+                f"  Paper exceeds token limit. Auto-truncating to {DEFAULT_MAX_PAGES} pages...",
+                err=True,
+            )
+            try:
+                pdf_base64, total_pages, _ = read_pdf_as_base64(paper_path, DEFAULT_MAX_PAGES)
+                click.echo(f"  Retrying with first {DEFAULT_MAX_PAGES} of {total_pages} pages...")
+                result = analyze_paper(llm_provider, pdf_base64, filename)
+            except Exception as retry_error:
+                click.echo(f"Error during analysis: {retry_error}", err=True)
+                sys.exit(1)
+        else:
+            click.echo(f"Error during analysis: {e}", err=True)
+            sys.exit(1)
 
     click.echo()
 

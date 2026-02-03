@@ -74,6 +74,16 @@ fluff-cutter analyze paper.pdf --provider anthropic --model claude-sonnet-4-5
 fluff-cutter analyze paper.pdf --output analysis.md
 ```
 
+### Long papers
+
+For very long papers that exceed the model's token limit, you can limit the number of pages:
+
+```bash
+fluff-cutter analyze paper.pdf --max-pages 30
+```
+
+If you don't specify `--max-pages` and the paper exceeds the token limit, it will automatically truncate to the first 50 pages and retry.
+
 ## Supported Providers
 
 | Provider | Default Model | Environment Variable |
