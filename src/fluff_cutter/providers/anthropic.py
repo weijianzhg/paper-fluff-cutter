@@ -10,7 +10,7 @@ class AnthropicProvider(BaseLLMProvider):
 
     @property
     def default_model(self) -> str:
-        return "claude-opus-4-5"
+        return "claude-sonnet-4-5"
 
     @property
     def provider_name(self) -> str:

@@ -43,7 +43,7 @@ export OPENAI_API_KEY=sk-your-key-here
 export ANTHROPIC_API_KEY=sk-ant-your-key-here
 export FLUFF_CUTTER_PROVIDER=anthropic  # optional, default provider
 export FLUFF_CUTTER_OPENAI_MODEL=gpt-5.2  # optional, override default model
-export FLUFF_CUTTER_ANTHROPIC_MODEL=claude-opus-4-5  # optional, override default model
+export FLUFF_CUTTER_ANTHROPIC_MODEL=claude-sonnet-4-5  # optional, override default model
 ```
 
 ## Usage
@@ -65,7 +65,7 @@ fluff-cutter analyze paper.pdf --provider anthropic
 
 ```bash
 fluff-cutter analyze paper.pdf --provider openai --model gpt-5.2
-fluff-cutter analyze paper.pdf --provider anthropic --model claude-opus-4-5
+fluff-cutter analyze paper.pdf --provider anthropic --model claude-sonnet-4-5
 ```
 
 ### Save output to file
@@ -79,7 +79,7 @@ fluff-cutter analyze paper.pdf --output analysis.md
 | Provider | Default Model | Environment Variable |
 |----------|---------------|---------------------|
 | OpenAI | gpt-5.2 | `OPENAI_API_KEY` |
-| Anthropic | claude-opus-4-5 | `ANTHROPIC_API_KEY` |
+| Anthropic | claude-sonnet-4-5 | `ANTHROPIC_API_KEY` |
 
 Both providers now support native PDF input - no external dependencies like poppler needed.
 
@@ -90,7 +90,7 @@ Configuration is loaded with the following precedence (highest to lowest):
 1. Command-line arguments (`--provider`, `--model`)
 2. Environment variables (`FLUFF_CUTTER_PROVIDER`, `FLUFF_CUTTER_OPENAI_MODEL`, `FLUFF_CUTTER_ANTHROPIC_MODEL`)
 3. Config file (`~/.config/fluff-cutter/config.json`)
-4. Provider defaults (gpt-5.2 for OpenAI, claude-opus-4-5 for Anthropic)
+4. Provider defaults (gpt-5.2 for OpenAI, claude-sonnet-4-5 for Anthropic)
 
 ## License
 

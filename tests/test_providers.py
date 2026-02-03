@@ -49,7 +49,7 @@ class TestAnthropicProvider:
         """Should have correct default model."""
         provider = AnthropicProvider(api_key="test-key")
 
-        assert provider.default_model == "claude-opus-4-5"
+        assert provider.default_model == "claude-sonnet-4-5"
 
     def test_provider_name(self):
         """Should return correct provider name."""
@@ -67,7 +67,7 @@ class TestAnthropicProvider:
         """Should use default model when none specified."""
         provider = AnthropicProvider(api_key="test-key")
 
-        assert provider.model == "claude-opus-4-5"
+        assert provider.model == "claude-sonnet-4-5"
 
     def test_get_model_info(self):
         """Should return formatted model info string."""
@@ -75,7 +75,7 @@ class TestAnthropicProvider:
 
         result = provider.get_model_info()
 
-        assert result == "Anthropic (claude-opus-4-5)"
+        assert result == "Anthropic (claude-sonnet-4-5)"
 
 
 class TestBaseLLMProvider:
