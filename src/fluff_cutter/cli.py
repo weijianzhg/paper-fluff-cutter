@@ -9,6 +9,7 @@ from .analyzer import analyze_paper
 from .config import (
     get_api_key,
     get_config_path,
+    get_default_model,
     get_default_provider,
     is_configured,
     load_config,
@@ -34,7 +35,7 @@ def main():
 
 @main.command()
 def init():
-    """Initialize configuration with API keys."""
+    """Initialize configuration with API keys, provider, and model settings."""
     click.echo("Paper Fluff Cutter Configuration")
     click.echo("=" * 40)
     click.echo()
@@ -93,6 +94,37 @@ def init():
 
     config["default_provider"] = default_provider
 
+    # Model configuration
+    click.echo()
+    click.echo("Configure default models (press Enter for provider defaults):")
+    click.echo()
+
+    if "openai_api_key" in config:
+        openai_default = OpenAIProvider(api_key="").default_model
+        openai_model = click.prompt(
+            f"OpenAI model",
+            default=openai_default,
+            show_default=True,
+        )
+        if openai_model != openai_default:
+            config["openai_model"] = openai_model
+            click.echo(f"  ✓ OpenAI model set to: {openai_model}")
+        else:
+            click.echo(f"  Using default: {openai_default}")
+
+    if "anthropic_api_key" in config:
+        anthropic_default = AnthropicProvider(api_key="").default_model
+        anthropic_model = click.prompt(
+            f"Anthropic model",
+            default=anthropic_default,
+            show_default=True,
+        )
+        if anthropic_model != anthropic_default:
+            config["anthropic_model"] = anthropic_model
+            click.echo(f"  ✓ Anthropic model set to: {anthropic_model}")
+        else:
+            click.echo(f"  Using default: {anthropic_default}")
+
     # Save configuration
     save_config(config)
 
@@ -145,9 +177,12 @@ def analyze(paper_path: str, provider: str | None, model: str | None, output: st
         click.echo(f"Run 'fluff-cutter init' or set {provider_name.upper()}_API_KEY.", err=True)
         sys.exit(1)
 
+    # Get model: CLI option > config file > provider default
+    model_to_use = model or get_default_model(provider_name, config)
+
     # Create provider instance
     provider_class = PROVIDERS[provider_name]
-    llm_provider = provider_class(api_key=api_key, model=model)
+    llm_provider = provider_class(api_key=api_key, model=model_to_use)
 
     click.echo(f"Analyzing paper: {paper_path}")
     click.echo(f"Using: {llm_provider.get_model_info()}")

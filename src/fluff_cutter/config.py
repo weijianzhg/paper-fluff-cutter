@@ -70,6 +70,12 @@ def load_config() -> dict[str, Any]:
     if os.environ.get("FLUFF_CUTTER_PROVIDER"):
         config["default_provider"] = os.environ["FLUFF_CUTTER_PROVIDER"]
 
+    if os.environ.get("FLUFF_CUTTER_OPENAI_MODEL"):
+        config["openai_model"] = os.environ["FLUFF_CUTTER_OPENAI_MODEL"]
+
+    if os.environ.get("FLUFF_CUTTER_ANTHROPIC_MODEL"):
+        config["anthropic_model"] = os.environ["FLUFF_CUTTER_ANTHROPIC_MODEL"]
+
     return config
 
 
@@ -105,6 +111,24 @@ def get_default_provider(config: dict[str, Any] | None = None) -> str:
         config = load_config()
 
     return config.get("default_provider", DEFAULT_PROVIDER)
+
+
+def get_default_model(provider: str, config: dict[str, Any] | None = None) -> str | None:
+    """
+    Get the configured default model for a provider.
+
+    Args:
+        provider: The provider name ('openai' or 'anthropic').
+        config: Optional pre-loaded config. If None, loads config.
+
+    Returns:
+        The configured model name, or None to use provider default.
+    """
+    if config is None:
+        config = load_config()
+
+    model_key = f"{provider}_model"
+    return config.get(model_key)
 
 
 def is_configured() -> bool:
