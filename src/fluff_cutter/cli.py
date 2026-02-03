@@ -32,6 +32,13 @@ def main():
     pass
 
 
+def _mask_key(key: str) -> str:
+    """Mask an API key for display, showing only first 4 and last 4 chars."""
+    if len(key) <= 12:
+        return "*" * len(key)
+    return f"{key[:4]}...{key[-4:]}"
+
+
 @main.command()
 def init():
     """Initialize configuration with API keys, provider, and model settings."""
@@ -39,32 +46,60 @@ def init():
     click.echo("=" * 40)
     click.echo()
 
+    # Load existing configuration (includes env vars)
+    existing_config = load_config()
+    existing_openai_key = existing_config.get("openai_api_key")
+    existing_anthropic_key = existing_config.get("anthropic_api_key")
+
+    # Show current status
+    if existing_openai_key or existing_anthropic_key:
+        click.echo("Current configuration:")
+        if existing_openai_key:
+            click.echo(f"  OpenAI API Key: {_mask_key(existing_openai_key)}")
+        if existing_anthropic_key:
+            click.echo(f"  Anthropic API Key: {_mask_key(existing_anthropic_key)}")
+        click.echo()
+
     config = {}
 
     # OpenAI API Key
-    click.echo("Enter your API keys (press Enter to skip):")
+    click.echo("Enter your API keys (press Enter to keep existing or skip):")
     click.echo()
 
+    openai_prompt = "OpenAI API Key"
+    if existing_openai_key:
+        openai_prompt += f" [{_mask_key(existing_openai_key)}]"
+
     openai_key = click.prompt(
-        "OpenAI API Key",
+        openai_prompt,
         default="",
         hide_input=True,
         show_default=False,
     )
     if openai_key:
         config["openai_api_key"] = openai_key
-        click.echo("  ✓ OpenAI API key saved")
+        click.echo("  ✓ OpenAI API key updated")
+    elif existing_openai_key:
+        config["openai_api_key"] = existing_openai_key
+        click.echo("  ✓ OpenAI API key kept")
 
     # Anthropic API Key
+    anthropic_prompt = "Anthropic API Key"
+    if existing_anthropic_key:
+        anthropic_prompt += f" [{_mask_key(existing_anthropic_key)}]"
+
     anthropic_key = click.prompt(
-        "Anthropic API Key",
+        anthropic_prompt,
         default="",
         hide_input=True,
         show_default=False,
     )
     if anthropic_key:
         config["anthropic_api_key"] = anthropic_key
-        click.echo("  ✓ Anthropic API key saved")
+        click.echo("  ✓ Anthropic API key updated")
+    elif existing_anthropic_key:
+        config["anthropic_api_key"] = existing_anthropic_key
+        click.echo("  ✓ Anthropic API key kept")
 
     if not config:
         click.echo()
@@ -82,11 +117,15 @@ def init():
     if "anthropic_api_key" in config:
         available_providers.append("anthropic")
 
+    current_default = existing_config.get("default_provider")
     if len(available_providers) > 1:
+        default_choice = current_default if current_default in available_providers else None
+        if not default_choice:
+            default_choice = "anthropic" if "anthropic" in available_providers else "openai"
         default_provider = click.prompt(
             "Default provider",
             type=click.Choice(available_providers),
-            default="anthropic" if "anthropic" in available_providers else "openai",
+            default=default_choice,
         )
     else:
         default_provider = available_providers[0]
@@ -100,9 +139,10 @@ def init():
 
     if "openai_api_key" in config:
         openai_default = OpenAIProvider(api_key="").default_model
+        current_openai_model = existing_config.get("openai_model", openai_default)
         openai_model = click.prompt(
             "OpenAI model",
-            default=openai_default,
+            default=current_openai_model,
             show_default=True,
         )
         if openai_model != openai_default:
@@ -113,9 +153,10 @@ def init():
 
     if "anthropic_api_key" in config:
         anthropic_default = AnthropicProvider(api_key="").default_model
+        current_anthropic_model = existing_config.get("anthropic_model", anthropic_default)
         anthropic_model = click.prompt(
             "Anthropic model",
-            default=anthropic_default,
+            default=current_anthropic_model,
             show_default=True,
         )
         if anthropic_model != anthropic_default:
