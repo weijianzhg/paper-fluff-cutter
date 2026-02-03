@@ -19,7 +19,6 @@ from .output import print_analysis, save_analysis
 from .pdf import get_pdf_filename, read_pdf_as_base64
 from .providers import AnthropicProvider, OpenAIProvider
 
-
 PROVIDERS = {
     "openai": OpenAIProvider,
     "anthropic": AnthropicProvider,
@@ -102,7 +101,7 @@ def init():
     if "openai_api_key" in config:
         openai_default = OpenAIProvider(api_key="").default_model
         openai_model = click.prompt(
-            f"OpenAI model",
+            "OpenAI model",
             default=openai_default,
             show_default=True,
         )
@@ -115,7 +114,7 @@ def init():
     if "anthropic_api_key" in config:
         anthropic_default = AnthropicProvider(api_key="").default_model
         anthropic_model = click.prompt(
-            f"Anthropic model",
+            "Anthropic model",
             default=anthropic_default,
             show_default=True,
         )

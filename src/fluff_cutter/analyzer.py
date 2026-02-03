@@ -2,7 +2,8 @@
 
 from .providers.base import BaseLLMProvider
 
-ANALYSIS_PROMPT = """You are analyzing an academic paper. Your job is to cut through all the fluff and extract only what matters.
+ANALYSIS_PROMPT = """You are analyzing an academic paper. Your job is to cut through \
+all the fluff and extract only what matters.
 
 Answer these three questions concisely and critically:
 
