@@ -104,21 +104,6 @@ If you don't specify `--max-pages` and the paper exceeds the token limit, it wil
 
 All providers support PDF input natively - no external dependencies like poppler needed.
 
-### OpenRouter
-
-[OpenRouter](https://openrouter.ai) provides access to 300+ models from OpenAI, Anthropic, Google, Meta, and others through a single API. PDFs work with any model - OpenRouter automatically handles PDF processing for models without native support.
-
-```bash
-# Use Claude via OpenRouter
-fluff-cutter analyze paper.pdf --provider openrouter --model anthropic/claude-sonnet-4-5
-
-# Use GPT via OpenRouter  
-fluff-cutter analyze paper.pdf --provider openrouter --model openai/gpt-5.2
-
-# Use Gemini via OpenRouter
-fluff-cutter analyze paper.pdf --provider openrouter --model google/gemini-2.5-pro
-```
-
 ## Configuration Precedence
 
 Configuration is loaded with the following precedence (highest to lowest):
