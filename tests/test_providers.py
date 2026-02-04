@@ -2,7 +2,7 @@
 
 import pytest
 
-from fluff_cutter.providers import AnthropicProvider, OpenAIProvider
+from fluff_cutter.providers import AnthropicProvider, OpenAIProvider, OpenRouterProvider
 from fluff_cutter.providers.base import BaseLLMProvider
 
 
@@ -76,6 +76,42 @@ class TestAnthropicProvider:
         result = provider.get_model_info()
 
         assert result == "Anthropic (claude-sonnet-4-5)"
+
+
+class TestOpenRouterProvider:
+    """Tests for OpenRouter provider."""
+
+    def test_default_model(self):
+        """Should have correct default model."""
+        provider = OpenRouterProvider(api_key="test-key")
+
+        assert provider.default_model == "anthropic/claude-sonnet-4-5"
+
+    def test_provider_name(self):
+        """Should return correct provider name."""
+        provider = OpenRouterProvider(api_key="test-key")
+
+        assert provider.provider_name == "OpenRouter"
+
+    def test_custom_model_override(self):
+        """Should allow custom model override."""
+        provider = OpenRouterProvider(api_key="test-key", model="openai/gpt-5.2")
+
+        assert provider.model == "openai/gpt-5.2"
+
+    def test_uses_default_when_no_model_specified(self):
+        """Should use default model when none specified."""
+        provider = OpenRouterProvider(api_key="test-key")
+
+        assert provider.model == "anthropic/claude-sonnet-4-5"
+
+    def test_get_model_info(self):
+        """Should return formatted model info string."""
+        provider = OpenRouterProvider(api_key="test-key")
+
+        result = provider.get_model_info()
+
+        assert result == "OpenRouter (anthropic/claude-sonnet-4-5)"
 
 
 class TestBaseLLMProvider:
