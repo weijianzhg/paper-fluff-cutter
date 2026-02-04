@@ -5,9 +5,15 @@ import os
 from pathlib import Path
 from typing import Any
 
-# Config file location
-CONFIG_DIR = Path.home() / ".config" / "fluff-cutter"
-CONFIG_FILE = CONFIG_DIR / "config.json"
+import yaml
+
+# Config file location (dotfile standard)
+CONFIG_DIR = Path.home() / ".fluff-cutter"
+CONFIG_FILE = CONFIG_DIR / "config.yaml"
+
+# Old config location (for migration)
+OLD_CONFIG_DIR = Path.home() / ".config" / "fluff-cutter"
+OLD_CONFIG_FILE = OLD_CONFIG_DIR / "config.json"
 
 # Default values
 DEFAULT_PROVIDER = "anthropic"
@@ -18,6 +24,18 @@ def get_config_path() -> Path:
     return CONFIG_FILE
 
 
+def migrate_old_config() -> None:
+    """Migrate config from old location if it exists."""
+    if OLD_CONFIG_FILE.exists() and not CONFIG_FILE.exists():
+        try:
+            with open(OLD_CONFIG_FILE, "r", encoding="utf-8") as f:
+                old_config = json.load(f)
+            save_config(old_config)
+            print(f"Migrated config from {OLD_CONFIG_FILE} to {CONFIG_FILE}")
+        except (json.JSONDecodeError, OSError):
+            pass  # Skip migration if old config is invalid
+
+
 def load_config_file() -> dict[str, Any]:
     """
     Load configuration from the config file.
@@ -25,13 +43,16 @@ def load_config_file() -> dict[str, Any]:
     Returns:
         Dictionary with config values, or empty dict if file doesn't exist.
     """
+    # Try to migrate old config first
+    migrate_old_config()
+
     if not CONFIG_FILE.exists():
         return {}
 
     try:
         with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except (json.JSONDecodeError, OSError):
+            return yaml.safe_load(f) or {}
+    except (yaml.YAMLError, OSError):
         return {}
 
 
@@ -45,7 +66,7 @@ def save_config(config: dict[str, Any]) -> None:
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 
     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-        json.dump(config, f, indent=2)
+        yaml.dump(config, f, default_flow_style=False, sort_keys=False)
 
 
 def load_config() -> dict[str, Any]:
