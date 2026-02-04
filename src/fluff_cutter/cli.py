@@ -18,11 +18,12 @@ from .config import (
 )
 from .output import print_analysis, save_analysis
 from .pdf import DEFAULT_MAX_PAGES, get_pdf_filename, read_pdf_as_base64
-from .providers import AnthropicProvider, OpenAIProvider
+from .providers import AnthropicProvider, OpenAIProvider, OpenRouterProvider
 
 PROVIDERS = {
     "openai": OpenAIProvider,
     "anthropic": AnthropicProvider,
+    "openrouter": OpenRouterProvider,
 }
 
 
@@ -70,14 +71,17 @@ def cmd_init(args):
     existing_config = load_config()
     existing_openai_key = existing_config.get("openai_api_key")
     existing_anthropic_key = existing_config.get("anthropic_api_key")
+    existing_openrouter_key = existing_config.get("openrouter_api_key")
 
     # Show current status
-    if existing_openai_key or existing_anthropic_key:
+    if existing_openai_key or existing_anthropic_key or existing_openrouter_key:
         print("Current configuration:")
         if existing_openai_key:
             print(f"  OpenAI API Key: {_mask_key(existing_openai_key)}")
         if existing_anthropic_key:
             print(f"  Anthropic API Key: {_mask_key(existing_anthropic_key)}")
+        if existing_openrouter_key:
+            print(f"  OpenRouter API Key: {_mask_key(existing_openrouter_key)}")
         print()
 
     config = {}
@@ -111,12 +115,26 @@ def cmd_init(args):
         else:
             print("  Anthropic API key kept")
 
+    # OpenRouter API Key
+    openrouter_key = prompt_with_default(
+        "OpenRouter API Key",
+        default=existing_openrouter_key or "",
+        password=True,
+    )
+    if openrouter_key:
+        config["openrouter_api_key"] = openrouter_key
+        if openrouter_key != existing_openrouter_key:
+            print("  OpenRouter API key updated")
+        else:
+            print("  OpenRouter API key kept")
+
     if not config:
         print()
         print("No API keys provided. Configuration not saved.")
         print("You can set keys via environment variables instead:")
         print("  export OPENAI_API_KEY=sk-...")
         print("  export ANTHROPIC_API_KEY=sk-ant-...")
+        print("  export OPENROUTER_API_KEY=sk-or-...")
         return
 
     # Default provider
@@ -126,6 +144,8 @@ def cmd_init(args):
         available_providers.append("openai")
     if "anthropic_api_key" in config:
         available_providers.append("anthropic")
+    if "openrouter_api_key" in config:
+        available_providers.append("openrouter")
 
     current_default = existing_config.get("default_provider")
     if len(available_providers) > 1:
@@ -168,6 +188,16 @@ def cmd_init(args):
             print(f"  Anthropic model set to: {anthropic_model}")
         else:
             print(f"  Using default: {anthropic_default}")
+
+    if "openrouter_api_key" in config:
+        openrouter_default = OpenRouterProvider(api_key="").default_model
+        current_openrouter_model = existing_config.get("openrouter_model", openrouter_default)
+        openrouter_model = prompt_with_default("OpenRouter model", default=current_openrouter_model)
+        if openrouter_model != openrouter_default:
+            config["openrouter_model"] = openrouter_model
+            print(f"  OpenRouter model set to: {openrouter_model}")
+        else:
+            print(f"  Using default: {openrouter_default}")
 
     # Save configuration
     save_config(config)
@@ -307,7 +337,7 @@ Examples:
     analyze_parser.add_argument(
         "-p",
         "--provider",
-        choices=["openai", "anthropic"],
+        choices=["openai", "anthropic", "openrouter"],
         help="LLM provider to use (overrides config)",
     )
     analyze_parser.add_argument(

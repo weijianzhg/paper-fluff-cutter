@@ -88,6 +88,9 @@ def load_config() -> dict[str, Any]:
     if os.environ.get("ANTHROPIC_API_KEY"):
         config["anthropic_api_key"] = os.environ["ANTHROPIC_API_KEY"]
 
+    if os.environ.get("OPENROUTER_API_KEY"):
+        config["openrouter_api_key"] = os.environ["OPENROUTER_API_KEY"]
+
     if os.environ.get("FLUFF_CUTTER_PROVIDER"):
         config["default_provider"] = os.environ["FLUFF_CUTTER_PROVIDER"]
 
@@ -96,6 +99,9 @@ def load_config() -> dict[str, Any]:
 
     if os.environ.get("FLUFF_CUTTER_ANTHROPIC_MODEL"):
         config["anthropic_model"] = os.environ["FLUFF_CUTTER_ANTHROPIC_MODEL"]
+
+    if os.environ.get("FLUFF_CUTTER_OPENROUTER_MODEL"):
+        config["openrouter_model"] = os.environ["FLUFF_CUTTER_OPENROUTER_MODEL"]
 
     return config
 
@@ -160,4 +166,8 @@ def is_configured() -> bool:
         True if at least one API key is available.
     """
     config = load_config()
-    return bool(config.get("openai_api_key") or config.get("anthropic_api_key"))
+    return bool(
+        config.get("openai_api_key")
+        or config.get("anthropic_api_key")
+        or config.get("openrouter_api_key")
+    )
