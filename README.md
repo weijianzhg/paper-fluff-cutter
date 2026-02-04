@@ -32,7 +32,7 @@ pip install -e .
 fluff-cutter init
 ```
 
-This will prompt you for your API keys, default provider, and model preferences, then save them to `~/.config/fluff-cutter/config.json`.
+This will prompt you for your API keys, default provider, and model preferences, then save them to `~/.fluff-cutter/config.yaml`.
 
 ### Option 2: Environment variables
 
@@ -105,7 +105,7 @@ Configuration is loaded with the following precedence (highest to lowest):
 
 1. Command-line arguments (`--provider`, `--model`)
 2. Environment variables (`FLUFF_CUTTER_PROVIDER`, `FLUFF_CUTTER_OPENAI_MODEL`, `FLUFF_CUTTER_ANTHROPIC_MODEL`)
-3. Config file (`~/.config/fluff-cutter/config.json`)
+3. Config file (`~/.fluff-cutter/config.yaml`)
 4. Provider defaults (gpt-5.2 for OpenAI, claude-sonnet-4-5 for Anthropic)
 
 ## License

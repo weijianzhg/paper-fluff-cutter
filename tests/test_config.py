@@ -1,10 +1,10 @@
 """Tests for configuration management."""
 
-import json
 import os
 from unittest.mock import patch
 
 import pytest
+import yaml
 
 from fluff_cutter.config import (
     get_api_key,
@@ -20,18 +20,23 @@ from fluff_cutter.config import (
 @pytest.fixture
 def temp_config_dir(tmp_path):
     """Create a temporary config directory."""
-    config_dir = tmp_path / ".config" / "fluff-cutter"
+    config_dir = tmp_path / ".fluff-cutter"
     config_dir.mkdir(parents=True)
     return config_dir
 
 
 @pytest.fixture
-def mock_config_file(temp_config_dir):
+def mock_config_file(temp_config_dir, tmp_path):
     """Patch the config file location to use temp directory."""
-    config_file = temp_config_dir / "config.json"
+    config_file = temp_config_dir / "config.yaml"
+    # Create a non-existent old config path to prevent migration
+    old_config_dir = tmp_path / "old_config"
+    old_config_file = old_config_dir / "config.json"
     with patch("fluff_cutter.config.CONFIG_FILE", config_file):
         with patch("fluff_cutter.config.CONFIG_DIR", temp_config_dir):
-            yield config_file
+            with patch("fluff_cutter.config.OLD_CONFIG_FILE", old_config_file):
+                with patch("fluff_cutter.config.OLD_CONFIG_DIR", old_config_dir):
+                    yield config_file
 
 
 class TestLoadConfigFile:
@@ -44,15 +49,15 @@ class TestLoadConfigFile:
     def test_loads_valid_config(self, mock_config_file):
         """Should load and return config from file."""
         config_data = {"openai_api_key": "sk-test", "default_provider": "openai"}
-        mock_config_file.write_text(json.dumps(config_data))
+        mock_config_file.write_text(yaml.dump(config_data))
 
         result = load_config_file()
 
         assert result == config_data
 
-    def test_returns_empty_dict_on_invalid_json(self, mock_config_file):
-        """Should return empty dict when config file has invalid JSON."""
-        mock_config_file.write_text("not valid json")
+    def test_returns_empty_dict_on_invalid_yaml(self, mock_config_file):
+        """Should return empty dict when config file has invalid YAML."""
+        mock_config_file.write_text("invalid: yaml: content: [")
 
         assert load_config_file() == {}
 
@@ -66,17 +71,21 @@ class TestSaveConfig:
 
         save_config(config_data)
 
-        saved = json.loads(mock_config_file.read_text())
+        saved = yaml.safe_load(mock_config_file.read_text())
         assert saved == config_data
 
     def test_creates_directory_if_not_exists(self, tmp_path):
         """Should create config directory if it doesn't exist."""
-        config_dir = tmp_path / "new_dir" / ".config" / "fluff-cutter"
-        config_file = config_dir / "config.json"
+        config_dir = tmp_path / "new_dir" / ".fluff-cutter"
+        config_file = config_dir / "config.yaml"
+        old_config_dir = tmp_path / "old_config"
+        old_config_file = old_config_dir / "config.json"
 
         with patch("fluff_cutter.config.CONFIG_FILE", config_file):
             with patch("fluff_cutter.config.CONFIG_DIR", config_dir):
-                save_config({"test": "value"})
+                with patch("fluff_cutter.config.OLD_CONFIG_FILE", old_config_file):
+                    with patch("fluff_cutter.config.OLD_CONFIG_DIR", old_config_dir):
+                        save_config({"test": "value"})
 
         assert config_file.exists()
 
@@ -88,7 +97,7 @@ class TestLoadConfig:
         """Environment variables should override config file values."""
         # Save config file with one set of values
         config_data = {"openai_api_key": "file-key", "default_provider": "openai"}
-        mock_config_file.write_text(json.dumps(config_data))
+        mock_config_file.write_text(yaml.dump(config_data))
 
         # Set environment variables with different values
         env_vars = {
@@ -122,7 +131,7 @@ class TestGetApiKey:
     def test_returns_key_from_config(self, mock_config_file):
         """Should return API key from config."""
         config_data = {"openai_api_key": "sk-test-key"}
-        mock_config_file.write_text(json.dumps(config_data))
+        mock_config_file.write_text(yaml.dump(config_data))
 
         result = get_api_key("openai")
 
@@ -141,7 +150,7 @@ class TestGetDefaultProvider:
     def test_returns_configured_provider(self, mock_config_file):
         """Should return configured default provider."""
         config_data = {"default_provider": "openai"}
-        mock_config_file.write_text(json.dumps(config_data))
+        mock_config_file.write_text(yaml.dump(config_data))
 
         result = get_default_provider()
 
@@ -160,7 +169,7 @@ class TestGetDefaultModel:
     def test_returns_configured_model(self, mock_config_file):
         """Should return configured model for provider."""
         config_data = {"openai_model": "gpt-5.2-custom"}
-        mock_config_file.write_text(json.dumps(config_data))
+        mock_config_file.write_text(yaml.dump(config_data))
 
         result = get_default_model("openai")
 
@@ -179,14 +188,14 @@ class TestIsConfigured:
     def test_returns_true_with_openai_key(self, mock_config_file):
         """Should return True when OpenAI key is configured."""
         config_data = {"openai_api_key": "sk-test"}
-        mock_config_file.write_text(json.dumps(config_data))
+        mock_config_file.write_text(yaml.dump(config_data))
 
         assert is_configured() is True
 
     def test_returns_true_with_anthropic_key(self, mock_config_file):
         """Should return True when Anthropic key is configured."""
         config_data = {"anthropic_api_key": "sk-ant-test"}
-        mock_config_file.write_text(json.dumps(config_data))
+        mock_config_file.write_text(yaml.dump(config_data))
 
         assert is_configured() is True
 
