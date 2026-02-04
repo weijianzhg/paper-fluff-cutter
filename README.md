@@ -39,9 +39,11 @@ This will prompt you for your API keys, default provider, and model preferences,
 ```bash
 export OPENAI_API_KEY=sk-your-key-here
 export ANTHROPIC_API_KEY=sk-ant-your-key-here
+export OPENROUTER_API_KEY=sk-or-your-key-here
 export FLUFF_CUTTER_PROVIDER=anthropic  # optional, default provider
 export FLUFF_CUTTER_OPENAI_MODEL=gpt-5.2  # optional, override default model
 export FLUFF_CUTTER_ANTHROPIC_MODEL=claude-sonnet-4-5  # optional, override default model
+export FLUFF_CUTTER_OPENROUTER_MODEL=anthropic/claude-sonnet-4-5  # optional, override default model
 ```
 
 ## Usage
@@ -71,6 +73,7 @@ fluff-cutter analyze paper.pdf --print
 ```bash
 fluff-cutter analyze paper.pdf --provider openai
 fluff-cutter analyze paper.pdf --provider anthropic
+fluff-cutter analyze paper.pdf --provider openrouter
 ```
 
 ### Specify model
@@ -78,6 +81,7 @@ fluff-cutter analyze paper.pdf --provider anthropic
 ```bash
 fluff-cutter analyze paper.pdf --provider openai --model gpt-5.2
 fluff-cutter analyze paper.pdf --provider anthropic --model claude-sonnet-4-5
+fluff-cutter analyze paper.pdf --provider openrouter --model google/gemini-2.5-pro
 ```
 
 ### Long papers
@@ -92,21 +96,37 @@ If you don't specify `--max-pages` and the paper exceeds the token limit, it wil
 
 ## Supported Providers
 
-| Provider | Default Model | Environment Variable |
-|----------|---------------|---------------------|
-| OpenAI | gpt-5.2 | `OPENAI_API_KEY` |
-| Anthropic | claude-sonnet-4-5 | `ANTHROPIC_API_KEY` |
+| Provider | Default Model | Environment Variable | Notes |
+|----------|---------------|---------------------|-------|
+| OpenAI | gpt-5.2 | `OPENAI_API_KEY` | Native PDF support |
+| Anthropic | claude-sonnet-4-5 | `ANTHROPIC_API_KEY` | Native PDF support |
+| OpenRouter | anthropic/claude-sonnet-4-5 | `OPENROUTER_API_KEY` | Access to 300+ models |
 
-Both providers now support native PDF input - no external dependencies like poppler needed.
+All providers support PDF input natively - no external dependencies like poppler needed.
+
+### OpenRouter
+
+[OpenRouter](https://openrouter.ai) provides access to 300+ models from OpenAI, Anthropic, Google, Meta, and others through a single API. PDFs work with any model - OpenRouter automatically handles PDF processing for models without native support.
+
+```bash
+# Use Claude via OpenRouter
+fluff-cutter analyze paper.pdf --provider openrouter --model anthropic/claude-sonnet-4-5
+
+# Use GPT via OpenRouter  
+fluff-cutter analyze paper.pdf --provider openrouter --model openai/gpt-5.2
+
+# Use Gemini via OpenRouter
+fluff-cutter analyze paper.pdf --provider openrouter --model google/gemini-2.5-pro
+```
 
 ## Configuration Precedence
 
 Configuration is loaded with the following precedence (highest to lowest):
 
 1. Command-line arguments (`--provider`, `--model`)
-2. Environment variables (`FLUFF_CUTTER_PROVIDER`, `FLUFF_CUTTER_OPENAI_MODEL`, `FLUFF_CUTTER_ANTHROPIC_MODEL`)
+2. Environment variables (`FLUFF_CUTTER_PROVIDER`, `FLUFF_CUTTER_*_MODEL`)
 3. Config file (`~/.fluff-cutter/config.yaml`)
-4. Provider defaults (gpt-5.2 for OpenAI, claude-sonnet-4-5 for Anthropic)
+4. Provider defaults
 
 ## License
 
