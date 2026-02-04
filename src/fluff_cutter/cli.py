@@ -1,6 +1,7 @@
 """Command-line interface for Paper Fluff Cutter."""
 
 import sys
+from pathlib import Path
 
 import click
 
@@ -193,7 +194,13 @@ def init():
     "-o",
     "--output",
     type=click.Path(),
-    help="Save output to file instead of printing",
+    help="Output file path (default: same name as input with .md extension)",
+)
+@click.option(
+    "--print",
+    "print_output",
+    is_flag=True,
+    help="Print to stdout instead of saving to file",
 )
 @click.option(
     "--max-pages",
@@ -206,6 +213,7 @@ def analyze(
     provider: str | None,
     model: str | None,
     output: str | None,
+    print_output: bool,
     max_pages: int | None,
 ):
     """Analyze an academic paper and extract its core value."""
@@ -280,11 +288,13 @@ def analyze(
     click.echo()
 
     # Output results
-    if output:
-        save_analysis(result["title"], result["analysis"], result["model_info"], output)
-        click.echo(f"Analysis saved to: {output}")
-    else:
+    if print_output:
         print_analysis(result["title"], result["analysis"], result["model_info"])
+    else:
+        # Default output path: same name as input with .md extension
+        output_path = output or str(Path(paper_path).with_suffix(".md"))
+        save_analysis(result["title"], result["analysis"], result["model_info"], output_path)
+        click.echo(f"Analysis saved to: {output_path}")
 
 
 if __name__ == "__main__":

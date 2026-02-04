@@ -1,7 +1,5 @@
 # Paper Fluff Cutter
 
-[![PyPI version](https://badge.fury.io/py/fluff-cutter.svg)](https://pypi.org/project/fluff-cutter/)
-
 A CLI tool that cuts through academic paper fluff to extract what actually matters.
 
 Most research has close to zero value. This tool uses multimodal LLMs to analyze papers and answer the three questions every paper should be able to answer:
@@ -54,6 +52,20 @@ export FLUFF_CUTTER_ANTHROPIC_MODEL=claude-sonnet-4-5  # optional, override defa
 fluff-cutter analyze paper.pdf
 ```
 
+By default, the analysis is saved to a `.md` file with the same name as the input (e.g., `paper.pdf` → `paper.md`).
+
+### Specify output file
+
+```bash
+fluff-cutter analyze paper.pdf --output analysis.md
+```
+
+### Print to stdout
+
+```bash
+fluff-cutter analyze paper.pdf --print
+```
+
 ### Specify provider
 
 ```bash
@@ -66,12 +78,6 @@ fluff-cutter analyze paper.pdf --provider anthropic
 ```bash
 fluff-cutter analyze paper.pdf --provider openai --model gpt-5.2
 fluff-cutter analyze paper.pdf --provider anthropic --model claude-sonnet-4-5
-```
-
-### Save output to file
-
-```bash
-fluff-cutter analyze paper.pdf --output analysis.md
 ```
 
 ### Long papers
