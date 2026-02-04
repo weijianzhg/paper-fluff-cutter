@@ -14,9 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `OPENROUTER_API_KEY` and `FLUFF_CUTTER_OPENROUTER_MODEL` environment variables
 - OpenRouter configuration in `fluff-cutter init`
 
-### Dependencies
+### Technical
 
-- Added `openrouter>=0.1` SDK
+- Uses `httpx` (transitive dependency) for OpenRouter API calls
 
 ## [0.2.0] - 2026-01-15
 

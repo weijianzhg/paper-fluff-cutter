@@ -1,8 +1,10 @@
 """OpenRouter provider implementation with universal PDF support."""
 
-from openrouter import OpenRouter
+import httpx
 
 from .base import BaseLLMProvider
+
+OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 
 class OpenRouterProvider(BaseLLMProvider):
@@ -32,28 +34,37 @@ class OpenRouterProvider(BaseLLMProvider):
         Returns:
             The model's analysis as a string.
         """
-        with OpenRouter(api_key=self.api_key) as client:
-            response = client.chat.send(
-                model=self.model,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "text",
-                                "text": prompt,
-                            },
-                            {
-                                "type": "file",
-                                "file": {
-                                    "filename": filename,
-                                    "file_data": f"data:application/pdf;base64,{pdf_base64}",
-                                },
-                            },
-                        ],
-                    }
-                ],
-                stream=False,
-            )
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
 
-        return response.choices[0].message.content or ""
+        payload = {
+            "model": self.model,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": prompt,
+                        },
+                        {
+                            "type": "file",
+                            "file": {
+                                "filename": filename,
+                                "file_data": f"data:application/pdf;base64,{pdf_base64}",
+                            },
+                        },
+                    ],
+                }
+            ],
+        }
+
+        # Use a longer timeout for PDF processing
+        with httpx.Client(timeout=300.0) as client:
+            response = client.post(OPENROUTER_API_URL, headers=headers, json=payload)
+            response.raise_for_status()
+            data = response.json()
+
+        return data["choices"][0]["message"]["content"] or ""
