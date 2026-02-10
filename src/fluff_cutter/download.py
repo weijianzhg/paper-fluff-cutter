@@ -103,18 +103,18 @@ def download_pdf(url: str, output_dir: Path | None = None) -> Path:
         response = client.get(url)
         response.raise_for_status()
 
-    # Validate that the response is actually a PDF
-    content_type = response.headers.get("content-type", "")
-    is_pdf_content_type = "application/pdf" in content_type
-    starts_with_pdf_magic = response.content[:5] == b"%PDF-"
+        # Validate that the response is actually a PDF
+        content_type = response.headers.get("content-type", "")
+        is_pdf_content_type = "application/pdf" in content_type
+        starts_with_pdf_magic = response.content[:5] == b"%PDF-"
 
-    if not is_pdf_content_type and not starts_with_pdf_magic:
-        raise RuntimeError(
-            f"URL did not return a PDF (content-type: {content_type}). "
-            "Please provide a direct link to a PDF file."
-        )
+        if not is_pdf_content_type and not starts_with_pdf_magic:
+            raise RuntimeError(
+                f"URL did not return a PDF (content-type: {content_type}). "
+                "Please provide a direct link to a PDF file."
+            )
 
-    # Write to disk
-    output_path.write_bytes(response.content)
+        # Write to disk
+        output_path.write_bytes(response.content)
 
     return output_path
