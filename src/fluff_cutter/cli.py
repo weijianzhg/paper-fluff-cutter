@@ -16,6 +16,7 @@ from .config import (
     load_config,
     save_config,
 )
+from .download import download_pdf, is_url
 from .output import print_analysis, save_analysis
 from .pdf import DEFAULT_MAX_PAGES, get_pdf_filename, read_pdf_as_base64
 from .providers import AnthropicProvider, OpenAIProvider, OpenRouterProvider
@@ -228,6 +229,16 @@ def cmd_analyze(args):
         print("  export ANTHROPIC_API_KEY=sk-ant-...", file=sys.stderr)
         sys.exit(1)
 
+    # If input is a URL, download it first
+    if is_url(paper_path):
+        print(f"Downloading paper from: {paper_path}")
+        try:
+            paper_path = str(download_pdf(paper_path))
+            print(f"  Saved to: {paper_path}")
+        except Exception as e:
+            print(f"Error downloading paper: {e}", file=sys.stderr)
+            sys.exit(1)
+
     # Validate paper path exists
     if not Path(paper_path).exists():
         print(f"Error: File not found: {paper_path}", file=sys.stderr)
@@ -314,6 +325,7 @@ def main():
 Examples:
   fluff-cutter init
   fluff-cutter analyze paper.pdf
+  fluff-cutter analyze https://arxiv.org/pdf/2411.19870
   fluff-cutter analyze paper.pdf --provider openai
   fluff-cutter analyze paper.pdf --output summary.md
   fluff-cutter analyze paper.pdf --print
@@ -333,7 +345,7 @@ Examples:
     analyze_parser = subparsers.add_parser(
         "analyze", help="Analyze an academic paper and extract its core value"
     )
-    analyze_parser.add_argument("paper_path", help="Path to PDF file to analyze")
+    analyze_parser.add_argument("paper_path", help="Path to PDF file or URL to analyze")
     analyze_parser.add_argument(
         "-p",
         "--provider",
