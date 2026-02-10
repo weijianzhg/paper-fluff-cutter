@@ -29,7 +29,8 @@ env/
 # IDE
 .idea/
 .vscode/
-.cursor/
+.cursor/*
+!.cursor/skills/
 *.swp
 *.swo
 
