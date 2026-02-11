@@ -312,7 +312,8 @@ def cmd_analyze(args):
         # Default output path: same name as input with .md extension
         output_path = output or str(Path(paper_path).with_suffix(".md"))
         save_analysis(result["title"], result["analysis"], result["model_info"], output_path)
-        print(f"Analysis saved to: {output_path}")
+        print_analysis(result["title"], result["analysis"], result["model_info"])
+        print(f"\nAnalysis saved to: {output_path}")
 
 
 def main():
