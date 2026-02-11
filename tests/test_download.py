@@ -1,6 +1,5 @@
 """Tests for PDF download handling."""
 
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import httpx
