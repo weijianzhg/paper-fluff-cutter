@@ -56,6 +56,16 @@ fluff-cutter analyze paper.pdf
 
 By default, the analysis is saved to a `.md` file with the same name as the input (e.g., `paper.pdf` → `paper.md`).
 
+### Analyze from URL
+
+You can pass a URL directly instead of a local file. The PDF will be downloaded to the current directory and then analyzed:
+
+```bash
+fluff-cutter analyze https://arxiv.org/pdf/2411.19870
+```
+
+Arxiv abstract URLs (`/abs/`) are automatically converted to PDF URLs. If the PDF has already been downloaded, it will be reused without re-downloading.
+
 ### Specify output file
 
 ```bash
