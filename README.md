@@ -2,126 +2,62 @@
 
 A CLI tool that cuts through academic paper fluff to extract what actually matters.
 
-Most research has close to zero value. This tool uses multimodal LLMs to analyze papers and answer the three questions every paper should be able to answer:
+Most research has close to zero value. This tool uses multimodal LLMs to analyze papers and answer three questions:
 
 1. **Why should I care?** - What problem does this address and why does it matter?
 2. **What's the actual innovation?** - What's the core idea in plain terms?
 3. **Is the evidence convincing?** - Do the experiments actually support the claims?
 
-## Installation
+## Quick Start
 
 ```bash
 pip install fluff-cutter
+fluff-cutter init          # set up API keys and defaults
+fluff-cutter analyze paper.pdf
 ```
 
 Requires Python 3.10+.
 
-### Development install
-
-```bash
-git clone https://github.com/weijianzhg/paper-fluff-cutter.git
-cd paper-fluff-cutter
-pip install -e .
-```
-
-## Configuration
-
-### Option 1: Interactive setup (recommended)
-
-```bash
-fluff-cutter init
-```
-
-This will prompt you for your API keys, default provider, and model preferences, then save them to `~/.fluff-cutter/config.yaml`.
-
-### Option 2: Environment variables
-
-```bash
-export OPENAI_API_KEY=sk-your-key-here
-export ANTHROPIC_API_KEY=sk-ant-your-key-here
-export OPENROUTER_API_KEY=sk-or-your-key-here
-export FLUFF_CUTTER_PROVIDER=anthropic  # optional, default provider
-export FLUFF_CUTTER_OPENAI_MODEL=gpt-5.2  # optional, override default model
-export FLUFF_CUTTER_ANTHROPIC_MODEL=claude-sonnet-4-5  # optional, override default model
-export FLUFF_CUTTER_OPENROUTER_MODEL=anthropic/claude-sonnet-4-5  # optional, override default model
-```
-
 ## Usage
 
-### Basic usage
-
 ```bash
+# Local file
 fluff-cutter analyze paper.pdf
-```
 
-By default, the analysis is saved to a `.md` file with the same name as the input (e.g., `paper.pdf` → `paper.md`).
-
-### Analyze from URL
-
-You can pass a URL directly instead of a local file. The PDF will be downloaded to the current directory and then analyzed:
-
-```bash
+# URL (arxiv /abs/ links are auto-converted to PDF)
 fluff-cutter analyze https://arxiv.org/pdf/2411.19870
+
+# Options
+fluff-cutter analyze paper.pdf --output analysis.md   # custom output path
+fluff-cutter analyze paper.pdf --print                 # stdout only, no file
+fluff-cutter analyze paper.pdf --provider openai       # openai, anthropic, openrouter
+fluff-cutter analyze paper.pdf --model gpt-5.2         # override default model
+fluff-cutter analyze paper.pdf --max-pages 30          # limit pages for long papers
 ```
 
-Arxiv abstract URLs (`/abs/`) are automatically converted to PDF URLs. If the PDF has already been downloaded, it will be reused without re-downloading.
-
-### Specify output file
-
-```bash
-fluff-cutter analyze paper.pdf --output analysis.md
-```
-
-### Print to stdout
-
-```bash
-fluff-cutter analyze paper.pdf --print
-```
-
-### Specify provider
-
-```bash
-fluff-cutter analyze paper.pdf --provider openai
-fluff-cutter analyze paper.pdf --provider anthropic
-fluff-cutter analyze paper.pdf --provider openrouter
-```
-
-### Specify model
-
-```bash
-fluff-cutter analyze paper.pdf --provider openai --model gpt-5.2
-fluff-cutter analyze paper.pdf --provider anthropic --model claude-sonnet-4-5
-fluff-cutter analyze paper.pdf --provider openrouter --model google/gemini-2.5-pro
-```
-
-### Long papers
-
-For very long papers that exceed the model's token limit, you can limit the number of pages:
-
-```bash
-fluff-cutter analyze paper.pdf --max-pages 30
-```
-
-If you don't specify `--max-pages` and the paper exceeds the token limit, it will automatically truncate to the first 50 pages and retry.
+By default, results are printed to the terminal and saved as a `.md` file next to the input PDF.
 
 ## Supported Providers
 
-| Provider | Default Model | Environment Variable | Notes |
-|----------|---------------|---------------------|-------|
-| OpenAI | gpt-5.2 | `OPENAI_API_KEY` | Native PDF support |
-| Anthropic | claude-sonnet-4-5 | `ANTHROPIC_API_KEY` | Native PDF support |
-| OpenRouter | anthropic/claude-sonnet-4-5 | `OPENROUTER_API_KEY` | Access to 300+ models |
+| Provider | Default Model | Env Variable |
+|----------|---------------|--------------|
+| OpenAI | gpt-5.2 | `OPENAI_API_KEY` |
+| Anthropic | claude-sonnet-4-5 | `ANTHROPIC_API_KEY` |
+| OpenRouter | anthropic/claude-sonnet-4-5 | `OPENROUTER_API_KEY` |
 
-All providers support PDF input natively - no external dependencies like poppler needed.
+All providers support native PDF input -- no external dependencies like poppler needed.
 
-## Configuration Precedence
+## Configuration
 
-Configuration is loaded with the following precedence (highest to lowest):
+Run `fluff-cutter init` for interactive setup, or set environment variables directly:
 
-1. Command-line arguments (`--provider`, `--model`)
-2. Environment variables (`FLUFF_CUTTER_PROVIDER`, `FLUFF_CUTTER_*_MODEL`)
-3. Config file (`~/.fluff-cutter/config.yaml`)
-4. Provider defaults
+```bash
+export OPENAI_API_KEY=sk-your-key-here
+export FLUFF_CUTTER_PROVIDER=anthropic          # default provider
+export FLUFF_CUTTER_ANTHROPIC_MODEL=claude-sonnet-4-5  # override model
+```
+
+Config is read in this order (highest priority first): CLI flags, env variables, `~/.fluff-cutter/config.yaml`, provider defaults.
 
 ## License
 
