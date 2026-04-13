@@ -17,7 +17,7 @@ from .config import (
     save_config,
 )
 from .download import download_pdf, is_url
-from .output import print_analysis, save_analysis
+from .output import print_analysis_stream, save_analysis
 from .pdf import DEFAULT_MAX_PAGES, get_pdf_filename, read_pdf_as_base64
 from .providers import AnthropicProvider, OpenAIProvider, OpenRouterProvider
 
@@ -307,12 +307,12 @@ def cmd_analyze(args):
 
     # Output results
     if print_output:
-        print_analysis(result["title"], result["analysis"], result["model_info"])
+        print_analysis_stream(result["title"], result["analysis"], result["model_info"])
     else:
         # Default output path: same name as input with .md extension
         output_path = output or str(Path(paper_path).with_suffix(".md"))
         save_analysis(result["title"], result["analysis"], result["model_info"], output_path)
-        print_analysis(result["title"], result["analysis"], result["model_info"])
+        print_analysis_stream(result["title"], result["analysis"], result["model_info"])
         print(f"\nAnalysis saved to: {output_path}")
 
 

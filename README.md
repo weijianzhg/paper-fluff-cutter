@@ -36,6 +36,7 @@ fluff-cutter analyze paper.pdf --max-pages 30          # limit pages for long pa
 ```
 
 By default, results are printed to the terminal and saved as a `.md` file next to the input PDF.
+Terminal output is rendered progressively once generation completes, while PDF reading and model analysis remain blocking steps.
 
 ## Supported Providers
 
