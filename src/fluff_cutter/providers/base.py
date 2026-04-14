@@ -1,7 +1,6 @@
 """Base class for LLM providers."""
 
 from abc import ABC, abstractmethod
-from typing import Iterator
 
 
 class BaseLLMProvider(ABC):
@@ -42,21 +41,6 @@ class BaseLLMProvider(ABC):
 
         Returns:
             The model's analysis as a string.
-        """
-        pass
-
-    @abstractmethod
-    def analyze_paper_stream(self, pdf_base64: str, filename: str, prompt: str) -> Iterator[str]:
-        """
-        Analyze a paper and stream response text chunks as they are generated.
-
-        Args:
-            pdf_base64: Base64-encoded PDF data.
-            filename: Original filename of the PDF.
-            prompt: The analysis prompt to send to the model.
-
-        Yields:
-            Incremental text chunks from the model response.
         """
         pass
 

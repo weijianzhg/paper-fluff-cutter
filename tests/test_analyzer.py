@@ -2,7 +2,7 @@
 
 from unittest.mock import MagicMock
 
-from fluff_cutter.analyzer import ANALYSIS_PROMPT, analyze_paper, parse_analysis_response, stream_analysis_chunks
+from fluff_cutter.analyzer import ANALYSIS_PROMPT, analyze_paper
 
 
 class TestAnalyzePaper:
@@ -82,30 +82,3 @@ class TestAnalyzePaper:
         result = analyze_paper(mock_provider, "base64", "paper.pdf")
 
         assert set(result.keys()) == {"title", "analysis", "model_info"}
-
-
-class TestStreamingHelpers:
-    """Tests for analyzer streaming helpers."""
-
-    def test_stream_analysis_chunks_uses_provider_stream_method(self):
-        """Should call provider streaming method with analysis prompt."""
-        mock_provider = MagicMock()
-        mock_provider.analyze_paper_stream.return_value = iter(["part1", "part2"])
-
-        chunks = list(stream_analysis_chunks(mock_provider, "base64data", "paper.pdf"))
-
-        assert chunks == ["part1", "part2"]
-        mock_provider.analyze_paper_stream.assert_called_once_with(
-            "base64data", "paper.pdf", ANALYSIS_PROMPT
-        )
-
-    def test_parse_analysis_response_matches_analyze_paper_shape(self):
-        """Should produce title/analysis/model_info dict from raw response."""
-        mock_provider = MagicMock()
-        mock_provider.get_model_info.return_value = "OpenAI (gpt-5.2)"
-
-        result = parse_analysis_response("TITLE: Test Paper\n\nBody text", mock_provider)
-
-        assert result["title"] == "Test Paper"
-        assert result["analysis"] == "Body text"
-        assert result["model_info"] == "OpenAI (gpt-5.2)"
