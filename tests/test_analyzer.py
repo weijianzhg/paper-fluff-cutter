@@ -2,7 +2,12 @@
 
 from unittest.mock import MagicMock
 
-from fluff_cutter.analyzer import ANALYSIS_PROMPT, analyze_paper, parse_analysis_response, stream_analysis_chunks
+from fluff_cutter.analyzer import (
+    ANALYSIS_PROMPT,
+    analyze_paper,
+    parse_analysis_response,
+    stream_analysis_chunks,
+)
 
 
 class TestAnalyzePaper:
