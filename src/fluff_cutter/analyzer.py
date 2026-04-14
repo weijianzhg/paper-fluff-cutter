@@ -1,5 +1,7 @@
 """Core paper analysis logic."""
 
+from typing import Iterator
+
 from .providers.base import BaseLLMProvider
 
 ANALYSIS_PROMPT = """You are analyzing an academic paper. Your job is to cut through \
@@ -30,20 +32,17 @@ TITLE: [Paper Title]
 Then provide your analysis."""
 
 
-def analyze_paper(provider: BaseLLMProvider, pdf_base64: str, filename: str) -> dict:
+def parse_analysis_response(raw_response: str, provider: BaseLLMProvider) -> dict:
     """
-    Analyze a paper using the provided LLM.
+    Parse a model response into title + analysis fields.
 
     Args:
-        provider: The LLM provider to use for analysis.
-        pdf_base64: Base64-encoded PDF data.
-        filename: Original filename of the PDF.
+        raw_response: Full response text from the model.
+        provider: LLM provider that produced the response.
 
     Returns:
         Dictionary with 'title', 'analysis', and 'model_info' keys.
     """
-    raw_response = provider.analyze_paper(pdf_base64, filename, ANALYSIS_PROMPT)
-
     # Try to extract the title from the response
     title = "Unknown Title"
     analysis = raw_response
@@ -61,3 +60,37 @@ def analyze_paper(provider: BaseLLMProvider, pdf_base64: str, filename: str) -> 
         "analysis": analysis,
         "model_info": provider.get_model_info(),
     }
+
+
+def analyze_paper(provider: BaseLLMProvider, pdf_base64: str, filename: str) -> dict:
+    """
+    Analyze a paper using the provided LLM.
+
+    Args:
+        provider: The LLM provider to use for analysis.
+        pdf_base64: Base64-encoded PDF data.
+        filename: Original filename of the PDF.
+
+    Returns:
+        Dictionary with 'title', 'analysis', and 'model_info' keys.
+    """
+    raw_response = provider.analyze_paper(pdf_base64, filename, ANALYSIS_PROMPT)
+
+    return parse_analysis_response(raw_response, provider)
+
+
+def stream_analysis_chunks(
+    provider: BaseLLMProvider, pdf_base64: str, filename: str
+) -> Iterator[str]:
+    """
+    Stream analysis text chunks from the provider.
+
+    Args:
+        provider: The LLM provider to use.
+        pdf_base64: Base64-encoded PDF data.
+        filename: Original filename of the PDF.
+
+    Yields:
+        Incremental response text chunks.
+    """
+    yield from provider.analyze_paper_stream(pdf_base64, filename, ANALYSIS_PROMPT)

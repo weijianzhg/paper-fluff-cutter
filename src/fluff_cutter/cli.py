@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 from . import __version__
-from .analyzer import analyze_paper
+from .analyzer import parse_analysis_response, stream_analysis_chunks
 from .config import (
     get_api_key,
     get_config_path,
@@ -17,7 +17,7 @@ from .config import (
     save_config,
 )
 from .download import download_pdf, is_url
-from .output import print_analysis_stream, save_analysis
+from .output import save_analysis
 from .pdf import DEFAULT_MAX_PAGES, get_pdf_filename, read_pdf_as_base64
 from .providers import AnthropicProvider, OpenAIProvider, OpenRouterProvider
 
@@ -279,10 +279,15 @@ def cmd_analyze(args):
         print(f"Error reading PDF: {e}", file=sys.stderr)
         sys.exit(1)
 
-    # Analyze the paper (with auto-retry on token limit)
-    print("Analyzing paper (this may take a minute)...")
+    # Analyze the paper with provider-side streaming (with auto-retry on token limit)
+    print("Analyzing paper (streaming output)...")
     try:
-        result = analyze_paper(llm_provider, pdf_base64, filename)
+        raw_response = ""
+        for chunk in stream_analysis_chunks(llm_provider, pdf_base64, filename):
+            raw_response += chunk
+            print(chunk, end="", flush=True)
+        print()
+        result = parse_analysis_response(raw_response, llm_provider)
     except Exception as e:
         error_msg = str(e)
         # Check if it's a token limit error and we haven't already truncated
@@ -295,7 +300,12 @@ def cmd_analyze(args):
             try:
                 pdf_base64, total_pages, _ = read_pdf_as_base64(paper_path, DEFAULT_MAX_PAGES)
                 print(f"  Retrying with first {DEFAULT_MAX_PAGES} of {total_pages} pages...")
-                result = analyze_paper(llm_provider, pdf_base64, filename)
+                raw_response = ""
+                for chunk in stream_analysis_chunks(llm_provider, pdf_base64, filename):
+                    raw_response += chunk
+                    print(chunk, end="", flush=True)
+                print()
+                result = parse_analysis_response(raw_response, llm_provider)
             except Exception as retry_error:
                 print(f"Error during analysis: {retry_error}", file=sys.stderr)
                 sys.exit(1)
@@ -306,13 +316,10 @@ def cmd_analyze(args):
     print()
 
     # Output results
-    if print_output:
-        print_analysis_stream(result["title"], result["analysis"], result["model_info"])
-    else:
+    if not print_output:
         # Default output path: same name as input with .md extension
         output_path = output or str(Path(paper_path).with_suffix(".md"))
         save_analysis(result["title"], result["analysis"], result["model_info"], output_path)
-        print_analysis_stream(result["title"], result["analysis"], result["model_info"])
         print(f"\nAnalysis saved to: {output_path}")
 
 
