@@ -1,6 +1,6 @@
 """Tests for output formatting."""
 
-from fluff_cutter.output import format_analysis, save_analysis
+from fluff_cutter.output import format_analysis, print_analysis_stream, save_analysis
 
 
 class TestFormatAnalysis:
@@ -84,3 +84,47 @@ class TestSaveAnalysis:
 
         content = output_path.read_text()
         assert content.startswith("# ")  # Markdown heading
+
+
+class TestPrintAnalysisStream:
+    """Tests for print_analysis_stream function."""
+
+    def test_prints_formatted_output(self, capsys):
+        """Should print the same formatted content to stdout."""
+        print_analysis_stream(
+            title="Streamed Title",
+            analysis="Streamed analysis body",
+            model_info="StreamModel",
+        )
+
+        captured = capsys.readouterr()
+        assert "# Paper Analysis: Streamed Title" in captured.out
+        assert "Streamed analysis body" in captured.out
+        assert "Analyzed with StreamModel" in captured.out
+
+    def test_writes_multiple_chunks(self, monkeypatch):
+        """Should write progressively rather than in one large print call."""
+
+        class FakeStdout:
+            def __init__(self):
+                self.chunks = []
+                self.flush_calls = 0
+
+            def write(self, text):
+                self.chunks.append(text)
+                return len(text)
+
+            def flush(self):
+                self.flush_calls += 1
+
+        fake_stdout = FakeStdout()
+        monkeypatch.setattr("sys.stdout", fake_stdout)
+
+        print_analysis_stream(
+            title="Chunk Test",
+            analysis="Line one\nLine two",
+            model_info="Model",
+        )
+
+        assert len(fake_stdout.chunks) > 1
+        assert fake_stdout.flush_calls == len(fake_stdout.chunks)

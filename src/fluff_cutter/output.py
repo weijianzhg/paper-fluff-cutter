@@ -1,5 +1,6 @@
 """Output formatting for paper analysis."""
 
+import sys
 from datetime import datetime
 
 
@@ -37,6 +38,21 @@ def print_analysis(title: str, analysis: str, model_info: str) -> None:
         model_info: Information about the model used.
     """
     print(format_analysis(title, analysis, model_info))
+
+
+def print_analysis_stream(title: str, analysis: str, model_info: str) -> None:
+    """
+    Print formatted analysis progressively to stdout.
+
+    Args:
+        title: The paper title.
+        analysis: The raw analysis from the LLM.
+        model_info: Information about the model used.
+    """
+    formatted = format_analysis(title, analysis, model_info)
+    for chunk in formatted.splitlines(keepends=True):
+        sys.stdout.write(chunk)
+        sys.stdout.flush()
 
 
 def save_analysis(title: str, analysis: str, model_info: str, output_path: str) -> None:
