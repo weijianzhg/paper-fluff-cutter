@@ -103,6 +103,9 @@ def load_config() -> dict[str, Any]:
     if os.environ.get("FLUFF_CUTTER_OPENROUTER_MODEL"):
         config["openrouter_model"] = os.environ["FLUFF_CUTTER_OPENROUTER_MODEL"]
 
+    if os.environ.get("FLUFF_CUTTER_WIKI_ROOT"):
+        config["default_wiki_root"] = os.environ["FLUFF_CUTTER_WIKI_ROOT"]
+
     return config
 
 
@@ -156,6 +159,21 @@ def get_default_model(provider: str, config: dict[str, Any] | None = None) -> st
 
     model_key = f"{provider}_model"
     return config.get(model_key)
+
+
+def get_default_wiki_root(config: dict[str, Any] | None = None) -> str | None:
+    """Get the configured default wiki root path."""
+    if config is None:
+        config = load_config()
+
+    return config.get("default_wiki_root")
+
+
+def set_default_wiki_root(root: str) -> None:
+    """Persist the default wiki root path in the config file."""
+    config = load_config_file()
+    config["default_wiki_root"] = root
+    save_config(config)
 
 
 def is_configured() -> bool:

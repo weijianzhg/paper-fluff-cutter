@@ -14,9 +14,11 @@ from .config import (
     get_config_path,
     get_default_model,
     get_default_provider,
+    get_default_wiki_root,
     is_configured,
     load_config,
     save_config,
+    set_default_wiki_root,
 )
 from .download import download_pdf, is_url
 from .output import save_analysis
@@ -321,7 +323,13 @@ def _resolve_wiki_root(root_arg: str | None) -> Path:
     try:
         if root_arg:
             return validate_wiki_root(Path(root_arg).expanduser().resolve())
-        return validate_wiki_root(find_wiki_root())
+        try:
+            return validate_wiki_root(find_wiki_root())
+        except FileNotFoundError:
+            default_root = get_default_wiki_root()
+            if default_root:
+                return validate_wiki_root(Path(default_root).expanduser().resolve())
+            raise
     except FileNotFoundError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         print("Run 'fluff-cutter wiki init <path>' first.", file=sys.stderr)
@@ -330,7 +338,9 @@ def _resolve_wiki_root(root_arg: str | None) -> Path:
 
 def cmd_wiki_init(args):
     root = init_wiki(args.path)
+    set_default_wiki_root(str(root))
     print(f"Initialized wiki at: {root}")
+    print(f"Default wiki set to: {root}")
 
 
 def cmd_wiki_add(args):
@@ -419,8 +429,8 @@ Examples:
   fluff-cutter analyze paper.pdf
   fluff-cutter analyze https://arxiv.org/pdf/2411.19870
   fluff-cutter wiki init ./research-wiki
-  fluff-cutter wiki add https://arxiv.org/pdf/2411.19870 --root ./research-wiki
-  fluff-cutter wiki query "agents planning" --root ./research-wiki
+  fluff-cutter wiki add https://arxiv.org/pdf/2411.19870
+  fluff-cutter wiki query "agents planning"
         """,
     )
     parser.add_argument("-v", "--version", action="version", version=f"%(prog)s {__version__}")

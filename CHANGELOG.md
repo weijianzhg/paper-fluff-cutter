@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2026-04-19
+
+### Changed
+
+- `fluff-cutter wiki init` now saves the initialized wiki as the default wiki root in user config
+- Wiki commands now fall back to the configured default wiki root when no local wiki is found from the current working directory
+- README examples now reflect the simpler default-root wiki workflow
+
 ## [0.5.0] - 2026-04-19
 
 ### Added
