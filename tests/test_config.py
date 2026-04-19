@@ -10,6 +10,7 @@ from fluff_cutter.config import (
     get_api_key,
     get_default_model,
     get_default_provider,
+    get_default_wiki_root,
     is_configured,
     load_config,
     load_config_file,
@@ -178,6 +179,23 @@ class TestGetDefaultModel:
     def test_returns_none_when_not_configured(self, mock_config_file):
         """Should return None when model is not configured."""
         result = get_default_model("openai")
+
+        assert result is None
+
+
+class TestGetDefaultWikiRoot:
+    """Tests for get_default_wiki_root function."""
+
+    def test_returns_configured_wiki_root(self, mock_config_file):
+        config_data = {"default_wiki_root": "/tmp/research-wiki"}
+        mock_config_file.write_text(yaml.dump(config_data))
+
+        result = get_default_wiki_root()
+
+        assert result == "/tmp/research-wiki"
+
+    def test_returns_none_when_not_configured(self, mock_config_file):
+        result = get_default_wiki_root()
 
         assert result is None
 

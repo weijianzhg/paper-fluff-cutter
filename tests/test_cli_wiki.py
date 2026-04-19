@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+import fluff_cutter.config as config_module
 from fluff_cutter import cli
 from fluff_cutter.wiki import add_paper_to_wiki, init_wiki
 
@@ -15,6 +16,18 @@ def wiki_root(tmp_path):
     return root
 
 
+@pytest.fixture
+def mock_user_config(tmp_path, monkeypatch):
+    config_dir = tmp_path / ".fluff-cutter"
+    config_dir.mkdir(parents=True)
+    config_file = config_dir / "config.yaml"
+    monkeypatch.setattr(config_module, "CONFIG_DIR", config_dir)
+    monkeypatch.setattr(config_module, "CONFIG_FILE", config_file)
+    monkeypatch.setattr(config_module, "OLD_CONFIG_DIR", tmp_path / "old-config")
+    monkeypatch.setattr(config_module, "OLD_CONFIG_FILE", tmp_path / "old-config" / "config.json")
+    return config_file
+
+
 def test_main_wiki_init_creates_project(tmp_path, monkeypatch, capsys):
     root = tmp_path / "brand-new-wiki"
     monkeypatch.setattr(cli.sys, "argv", ["fluff-cutter", "wiki", "init", str(root)])
@@ -24,6 +37,30 @@ def test_main_wiki_init_creates_project(tmp_path, monkeypatch, capsys):
     out = capsys.readouterr().out
     assert "Initialized wiki" in out
     assert (root / "fluff-cutter.yaml").exists()
+
+
+def test_main_wiki_init_sets_default_wiki_root(mock_user_config, tmp_path, monkeypatch, capsys):
+    root = tmp_path / "brand-new-wiki"
+    monkeypatch.setattr(cli.sys, "argv", ["fluff-cutter", "wiki", "init", str(root)])
+
+    cli.main()
+
+    saved = mock_user_config.read_text(encoding="utf-8")
+    assert "default_wiki_root" in saved
+    assert str(root.resolve()) in saved
+
+
+def test_wiki_status_uses_configured_default_root(
+    wiki_root, mock_user_config, monkeypatch, capsys, tmp_path
+):
+    mock_user_config.write_text(f"default_wiki_root: {wiki_root}\n", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(cli.sys, "argv", ["fluff-cutter", "wiki", "status"])
+
+    cli.main()
+
+    out = capsys.readouterr().out
+    assert "paper_count: 0" in out
 
 
 def test_main_wiki_status_prints_counts(wiki_root, monkeypatch, capsys, tmp_path):

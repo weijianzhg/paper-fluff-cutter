@@ -43,13 +43,14 @@ For persistent research tracking, you can keep a markdown wiki alongside the raw
 # Create a wiki project
 fluff-cutter wiki init ./research-wiki
 
-# Analyze a paper and ingest it into the wiki
-fluff-cutter wiki add https://arxiv.org/pdf/2411.19870 --root ./research-wiki
+# `wiki init` saves this as your default wiki root, so later commands work
+# from anywhere unless you explicitly override with --root
+fluff-cutter wiki add https://arxiv.org/pdf/2411.19870
 
 # Inspect the wiki
-fluff-cutter wiki ls --root ./research-wiki
-fluff-cutter wiki status --root ./research-wiki
-fluff-cutter wiki query "agents planning" --root ./research-wiki
+fluff-cutter wiki ls
+fluff-cutter wiki status
+fluff-cutter wiki query "agents planning"
 
 # Maintenance
 fluff-cutter wiki rebuild --root ./research-wiki
