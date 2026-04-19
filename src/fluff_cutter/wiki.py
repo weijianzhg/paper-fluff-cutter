@@ -131,10 +131,9 @@ def _unique_slug(paths: WikiPaths, title: str) -> str:
     base = slugify(title)
     candidate = base
     counter = 2
-    while (
-        (paths.papers / f"{candidate}.md").exists()
-        or (paths.raw_pdfs / f"{candidate}.pdf").exists()
-    ):
+    while (paths.papers / f"{candidate}.md").exists() or (
+        paths.raw_pdfs / f"{candidate}.pdf"
+    ).exists():
         candidate = f"{base}-{counter}"
         counter += 1
     return candidate
@@ -274,11 +273,7 @@ def add_paper_to_wiki(
         "model_info": model_info,
     }
     frontmatter = yaml.safe_dump(metadata, sort_keys=False).strip()
-    body = (
-        f"---\n{frontmatter}\n---\n\n"
-        f"# {title}\n\n"
-        f"## Analysis\n\n{analysis.strip()}\n"
-    )
+    body = f"---\n{frontmatter}\n---\n\n# {title}\n\n## Analysis\n\n{analysis.strip()}\n"
     _write_text(page_path, body)
     rebuild_wiki(paths.root)
     _append_log(paths.root, "ingest", title, f"source: {source_ref}")
