@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-04-19
+
+### Added
+
+- New `wiki` command family for persistent research workflows: `init`, `add`, `remove`, `query`, `rebuild`, `doctor`, `ls`, and `status`
+- Local markdown wiki management with paper pages, index, overview, log, and root validation
+- CLI and unit tests covering the wiki workflow
+
 ## [0.4.2] - 2026-04-13
 
 ### Changed

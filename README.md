@@ -35,6 +35,45 @@ fluff-cutter analyze paper.pdf --model gpt-5.2         # override default model
 fluff-cutter analyze paper.pdf --max-pages 30          # limit pages for long papers
 ```
 
+## Wiki workflow
+
+For persistent research tracking, you can keep a markdown wiki alongside the raw PDFs:
+
+```bash
+# Create a wiki project
+fluff-cutter wiki init ./research-wiki
+
+# Analyze a paper and ingest it into the wiki
+fluff-cutter wiki add https://arxiv.org/pdf/2411.19870 --root ./research-wiki
+
+# Inspect the wiki
+fluff-cutter wiki ls --root ./research-wiki
+fluff-cutter wiki status --root ./research-wiki
+fluff-cutter wiki query "agents planning" --root ./research-wiki
+
+# Maintenance
+fluff-cutter wiki rebuild --root ./research-wiki
+fluff-cutter wiki doctor --root ./research-wiki
+fluff-cutter wiki remove paper-slug --root ./research-wiki --delete-pdf
+```
+
+The wiki layout looks like this:
+
+```text
+research-wiki/
+├── fluff-cutter.yaml
+├── raw/
+│   └── pdfs/
+└── wiki/
+    ├── papers/
+    ├── topics/
+    ├── concepts/
+    ├── queries/
+    ├── index.md
+    ├── overview.md
+    └── log.md
+```
+
 By default, results are printed to the terminal and saved as a `.md` file next to the input PDF.
 Model output streams live during analysis (provider-side streaming), so you see tokens immediately instead of waiting for full completion.
 
