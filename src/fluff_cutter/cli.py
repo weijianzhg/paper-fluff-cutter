@@ -1,5 +1,7 @@
 """Command-line interface for Paper Fluff Cutter."""
 
+from __future__ import annotations
+
 import argparse
 import getpass
 import sys
@@ -20,6 +22,18 @@ from .download import download_pdf, is_url
 from .output import save_analysis
 from .pdf import DEFAULT_MAX_PAGES, get_pdf_filename, read_pdf_as_base64
 from .providers import AnthropicProvider, OpenAIProvider, OpenRouterProvider
+from .wiki import (
+    add_paper_to_wiki,
+    doctor_wiki,
+    find_wiki_root,
+    init_wiki,
+    list_papers,
+    query_wiki,
+    rebuild_wiki,
+    remove_paper_from_wiki,
+    validate_wiki_root,
+    wiki_status,
+)
 
 PROVIDERS = {
     "openai": OpenAIProvider,
@@ -36,17 +50,7 @@ def _mask_key(key: str) -> str:
 
 
 def prompt_with_default(prompt: str, default: str = "", password: bool = False) -> str:
-    """
-    Prompt user for input with an optional default value.
-
-    Args:
-        prompt: The prompt to display.
-        default: Default value if user presses enter.
-        password: If True, mask input using getpass.
-
-    Returns:
-        User input or default value.
-    """
+    """Prompt user for input with an optional default value."""
     if default and not password:
         full_prompt = f"{prompt} [{default}]: "
     elif default and password:
@@ -54,11 +58,7 @@ def prompt_with_default(prompt: str, default: str = "", password: bool = False) 
     else:
         full_prompt = f"{prompt}: "
 
-    if password:
-        value = getpass.getpass(full_prompt)
-    else:
-        value = input(full_prompt)
-
+    value = getpass.getpass(full_prompt) if password else input(full_prompt)
     return value.strip() if value.strip() else default
 
 
@@ -68,13 +68,11 @@ def cmd_init(args):
     print("=" * 40)
     print()
 
-    # Load existing configuration (includes env vars)
     existing_config = load_config()
     existing_openai_key = existing_config.get("openai_api_key")
     existing_anthropic_key = existing_config.get("anthropic_api_key")
     existing_openrouter_key = existing_config.get("openrouter_api_key")
 
-    # Show current status
     if existing_openai_key or existing_anthropic_key or existing_openrouter_key:
         print("Current configuration:")
         if existing_openai_key:
@@ -87,7 +85,6 @@ def cmd_init(args):
 
     config = {}
 
-    # OpenAI API Key
     print("Enter your API keys (press Enter to keep existing or skip):")
     print()
 
@@ -98,47 +95,43 @@ def cmd_init(args):
     )
     if openai_key:
         config["openai_api_key"] = openai_key
-        if openai_key != existing_openai_key:
-            print("  OpenAI API key updated")
-        else:
-            print("  OpenAI API key kept")
+        print(
+            "  OpenAI API key updated"
+            if openai_key != existing_openai_key
+            else "  OpenAI API key kept"
+        )
 
-    # Anthropic API Key
     anthropic_key = prompt_with_default(
-        "Anthropic API Key",
-        default=existing_anthropic_key or "",
-        password=True,
+        "Anthropic API Key", default=existing_anthropic_key or "", password=True
     )
     if anthropic_key:
         config["anthropic_api_key"] = anthropic_key
-        if anthropic_key != existing_anthropic_key:
-            print("  Anthropic API key updated")
-        else:
-            print("  Anthropic API key kept")
+        print(
+            "  Anthropic API key updated"
+            if anthropic_key != existing_anthropic_key
+            else "  Anthropic API key kept"
+        )
 
-    # OpenRouter API Key
     openrouter_key = prompt_with_default(
-        "OpenRouter API Key",
-        default=existing_openrouter_key or "",
-        password=True,
+        "OpenRouter API Key", default=existing_openrouter_key or "", password=True
     )
     if openrouter_key:
         config["openrouter_api_key"] = openrouter_key
-        if openrouter_key != existing_openrouter_key:
-            print("  OpenRouter API key updated")
-        else:
-            print("  OpenRouter API key kept")
+        print(
+            "  OpenRouter API key updated"
+            if openrouter_key != existing_openrouter_key
+            else "  OpenRouter API key kept"
+        )
 
     if not config:
         print()
         print("No API keys provided. Configuration not saved.")
         print("You can set keys via environment variables instead:")
-        print("  export OPENAI_API_KEY=sk-...")
-        print("  export ANTHROPIC_API_KEY=sk-ant-...")
-        print("  export OPENROUTER_API_KEY=sk-or-...")
+        print("  export OPENAI_API_KEY=***")
+        print("  export ANTHROPIC_API_KEY=***")
+        print("  export OPENROUTER_API_KEY=***")
         return
 
-    # Default provider
     print()
     available_providers = []
     if "openai_api_key" in config:
@@ -165,7 +158,6 @@ def cmd_init(args):
 
     config["default_provider"] = default_provider
 
-    # Model configuration
     print()
     print("Configure default models (press Enter for provider defaults):")
     print()
@@ -200,7 +192,6 @@ def cmd_init(args):
         else:
             print(f"  Using default: {openrouter_default}")
 
-    # Save configuration
     save_config(config)
 
     print()
@@ -211,75 +202,71 @@ def cmd_init(args):
     print("  fluff-cutter analyze <paper.pdf>")
 
 
-def cmd_analyze(args):
-    """Handle the analyze subcommand."""
-    paper_path = args.paper_path
-    provider = args.provider
-    model = args.model
-    output = args.output
-    print_output = args.print_output
-    max_pages = args.max_pages
-
-    # Check configuration
+def _create_provider(provider: str | None, model: str | None):
     if not is_configured():
         print("Error: No API keys configured.", file=sys.stderr)
         print("Run 'fluff-cutter init' to set up your API keys.", file=sys.stderr)
         print("Or set environment variables:", file=sys.stderr)
-        print("  export OPENAI_API_KEY=sk-...", file=sys.stderr)
-        print("  export ANTHROPIC_API_KEY=sk-ant-...", file=sys.stderr)
+        print("  export OPENAI_API_KEY=***", file=sys.stderr)
+        print("  export ANTHROPIC_API_KEY=***", file=sys.stderr)
+        print("  export OPENROUTER_API_KEY=***", file=sys.stderr)
         sys.exit(1)
 
-    # If input is a URL, download it first
-    if is_url(paper_path):
-        print(f"Downloading paper from: {paper_path}")
-        try:
-            paper_path = str(download_pdf(paper_path))
-            print(f"  Saved to: {paper_path}")
-        except Exception as e:
-            print(f"Error downloading paper: {e}", file=sys.stderr)
-            sys.exit(1)
-
-    # Validate paper path exists
-    if not Path(paper_path).exists():
-        print(f"Error: File not found: {paper_path}", file=sys.stderr)
-        sys.exit(1)
-
-    # Load config and determine provider
     config = load_config()
     provider_name = provider or get_default_provider(config)
-
-    # Get API key for the selected provider
     api_key = get_api_key(provider_name, config)
     if not api_key:
         print(f"Error: No API key configured for {provider_name}.", file=sys.stderr)
         print(f"Run 'fluff-cutter init' or set {provider_name.upper()}_API_KEY.", file=sys.stderr)
         sys.exit(1)
 
-    # Get model: CLI option > config file > provider default
     model_to_use = model or get_default_model(provider_name, config)
-
-    # Create provider instance
     provider_class = PROVIDERS[provider_name]
-    llm_provider = provider_class(api_key=api_key, model=model_to_use)
+    return provider_class(api_key=api_key, model=model_to_use)
 
-    print(f"Analyzing paper: {paper_path}")
+
+def _resolve_local_paper_path(paper_path: str, download_dir: Path | None = None) -> str:
+    if is_url(paper_path):
+        print(f"Downloading paper from: {paper_path}")
+        try:
+            local_path = str(download_pdf(paper_path, output_dir=download_dir))
+        except Exception as exc:
+            print(f"Error downloading paper: {exc}", file=sys.stderr)
+            sys.exit(1)
+        print(f"  Saved to: {local_path}")
+        return local_path
+    return paper_path
+
+
+def analyze_source(
+    paper_path: str,
+    provider: str | None = None,
+    model: str | None = None,
+    max_pages: int | None = None,
+    download_dir: Path | None = None,
+) -> tuple[dict[str, str], str]:
+    local_paper_path = _resolve_local_paper_path(paper_path, download_dir=download_dir)
+    if not Path(local_paper_path).exists():
+        print(f"Error: File not found: {local_paper_path}", file=sys.stderr)
+        sys.exit(1)
+
+    llm_provider = _create_provider(provider, model)
+
+    print(f"Analyzing paper: {local_paper_path}")
     print(f"Using: {llm_provider.get_model_info()}")
     print()
-
-    # Read PDF
     print("Reading PDF...")
     try:
-        pdf_base64, total_pages, was_truncated = read_pdf_as_base64(paper_path, max_pages)
-        filename = get_pdf_filename(paper_path)
+        pdf_base64, total_pages, was_truncated = read_pdf_as_base64(local_paper_path, max_pages)
+        filename = get_pdf_filename(local_paper_path)
         if was_truncated:
             print(f"  PDF truncated: analyzing first {max_pages} of {total_pages} pages")
         else:
             print(f"  PDF loaded successfully ({total_pages} pages)")
-    except Exception as e:
-        print(f"Error reading PDF: {e}", file=sys.stderr)
+    except Exception as exc:
+        print(f"Error reading PDF: {exc}", file=sys.stderr)
         sys.exit(1)
 
-    # Analyze the paper with provider-side streaming (with auto-retry on token limit)
     print("Analyzing paper (streaming output)...")
     try:
         raw_response = ""
@@ -288,9 +275,8 @@ def cmd_analyze(args):
             print(chunk, end="", flush=True)
         print()
         result = parse_analysis_response(raw_response, llm_provider)
-    except Exception as e:
-        error_msg = str(e)
-        # Check if it's a token limit error and we haven't already truncated
+    except Exception as exc:
+        error_msg = str(exc)
         if "too long" in error_msg.lower() and "token" in error_msg.lower() and not was_truncated:
             print()
             print(
@@ -298,7 +284,7 @@ def cmd_analyze(args):
                 file=sys.stderr,
             )
             try:
-                pdf_base64, total_pages, _ = read_pdf_as_base64(paper_path, DEFAULT_MAX_PAGES)
+                pdf_base64, total_pages, _ = read_pdf_as_base64(local_paper_path, DEFAULT_MAX_PAGES)
                 print(f"  Retrying with first {DEFAULT_MAX_PAGES} of {total_pages} pages...")
                 raw_response = ""
                 for chunk in stream_analysis_chunks(llm_provider, pdf_base64, filename):
@@ -310,21 +296,119 @@ def cmd_analyze(args):
                 print(f"Error during analysis: {retry_error}", file=sys.stderr)
                 sys.exit(1)
         else:
-            print(f"Error during analysis: {e}", file=sys.stderr)
+            print(f"Error during analysis: {exc}", file=sys.stderr)
             sys.exit(1)
 
     print()
+    return result, local_paper_path
 
-    # Output results
-    if not print_output:
-        # Default output path: same name as input with .md extension
-        output_path = output or str(Path(paper_path).with_suffix(".md"))
+
+def cmd_analyze(args):
+    """Handle the analyze subcommand."""
+    result, local_paper_path = analyze_source(
+        args.paper_path,
+        provider=args.provider,
+        model=args.model,
+        max_pages=args.max_pages,
+    )
+    if not args.print_output:
+        output_path = args.output or str(Path(local_paper_path).with_suffix(".md"))
         save_analysis(result["title"], result["analysis"], result["model_info"], output_path)
-        print(f"\nAnalysis saved to: {output_path}")
+        print(f"Analysis saved to: {output_path}")
 
 
-def main():
-    """Main entry point for the CLI."""
+def _resolve_wiki_root(root_arg: str | None) -> Path:
+    try:
+        if root_arg:
+            return validate_wiki_root(Path(root_arg).expanduser().resolve())
+        return validate_wiki_root(find_wiki_root())
+    except FileNotFoundError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        print("Run 'fluff-cutter wiki init <path>' first.", file=sys.stderr)
+        sys.exit(1)
+
+
+def cmd_wiki_init(args):
+    root = init_wiki(args.path)
+    print(f"Initialized wiki at: {root}")
+
+
+def cmd_wiki_add(args):
+    root = _resolve_wiki_root(args.root)
+    result, local_paper_path = analyze_source(
+        args.paper_path,
+        provider=args.provider,
+        model=args.model,
+        max_pages=args.max_pages,
+        download_dir=root / "raw" / "pdfs",
+    )
+    page_path = add_paper_to_wiki(
+        root,
+        source_ref=args.paper_path,
+        pdf_path=local_paper_path,
+        title=result["title"],
+        analysis=result["analysis"],
+        model_info=result["model_info"],
+    )
+    print(f"Wiki page saved to: {page_path}")
+
+
+def cmd_wiki_remove(args):
+    root = _resolve_wiki_root(args.root)
+    removed = remove_paper_from_wiki(root, args.paper, delete_pdf=args.delete_pdf)
+    print(f"Removed paper: {removed['slug']}")
+    print(f"  page_deleted: {removed['page_deleted']}")
+    print(f"  pdf_deleted: {removed['pdf_deleted']}")
+
+
+def cmd_wiki_query(args):
+    root = _resolve_wiki_root(args.root)
+    result = query_wiki(root, args.question, top_k=args.top_k)
+    print(f"question: {result['question']}")
+    if not result["matches"]:
+        print("No matching wiki pages found.")
+        return
+    for match in result["matches"]:
+        print(f"- {match['title']} ({match['score']})")
+        print(f"  {match['snippet']}")
+
+
+def cmd_wiki_rebuild(args):
+    root = _resolve_wiki_root(args.root)
+    result = rebuild_wiki(root)
+    print(f"Rebuilt wiki artifacts for {result['paper_count']} paper(s).")
+
+
+def cmd_wiki_doctor(args):
+    root = _resolve_wiki_root(args.root)
+    report = doctor_wiki(root)
+    if report["ok"]:
+        print("Wiki looks healthy.")
+        return
+    print("Wiki issues:")
+    for issue in report["issues"]:
+        print(f"- {issue}")
+    sys.exit(1)
+
+
+def cmd_wiki_ls(args):
+    root = _resolve_wiki_root(args.root)
+    papers = list_papers(root)
+    if not papers:
+        print("No papers in wiki yet.")
+        return
+    for paper in papers:
+        print(f"{paper['slug']} | {paper['title']} | {paper['added']}")
+
+
+def cmd_wiki_status(args):
+    root = _resolve_wiki_root(args.root)
+    status = wiki_status(root)
+    for key, value in status.items():
+        print(f"{key}: {value}")
+
+
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="fluff-cutter",
         description="Paper Fluff Cutter - Extract the core value from academic papers",
@@ -334,22 +418,20 @@ Examples:
   fluff-cutter init
   fluff-cutter analyze paper.pdf
   fluff-cutter analyze https://arxiv.org/pdf/2411.19870
-  fluff-cutter analyze paper.pdf --provider openai
-  fluff-cutter analyze paper.pdf --output summary.md
-  fluff-cutter analyze paper.pdf --print
+  fluff-cutter wiki init ./research-wiki
+  fluff-cutter wiki add https://arxiv.org/pdf/2411.19870 --root ./research-wiki
+  fluff-cutter wiki query "agents planning" --root ./research-wiki
         """,
     )
     parser.add_argument("-v", "--version", action="version", version=f"%(prog)s {__version__}")
 
     subparsers = parser.add_subparsers(dest="command", metavar="command")
 
-    # Init subcommand
     init_parser = subparsers.add_parser(
         "init", help="Configure API keys and default settings interactively"
     )
     init_parser.set_defaults(func=cmd_init)
 
-    # Analyze subcommand
     analyze_parser = subparsers.add_parser(
         "analyze", help="Analyze an academic paper and extract its core value"
     )
@@ -384,10 +466,81 @@ Examples:
     )
     analyze_parser.set_defaults(func=cmd_analyze)
 
-    # Parse arguments
-    args = parser.parse_args()
+    wiki_parser = subparsers.add_parser("wiki", help="Manage a persistent paper wiki")
+    wiki_subparsers = wiki_parser.add_subparsers(dest="wiki_command", metavar="wiki-command")
 
-    # Execute the appropriate command
+    wiki_init_parser = wiki_subparsers.add_parser("init", help="Initialize a wiki project")
+    wiki_init_parser.add_argument("path", help="Directory to initialize")
+    wiki_init_parser.set_defaults(func=cmd_wiki_init)
+
+    wiki_add_parser = wiki_subparsers.add_parser(
+        "add",
+        help="Analyze a paper and add it to the wiki",
+    )
+    wiki_add_parser.add_argument("paper_path", help="Path or URL to a paper PDF")
+    wiki_add_parser.add_argument(
+        "--root",
+        help="Wiki root directory (defaults to nearest fluff-cutter.yaml)",
+    )
+    wiki_add_parser.add_argument(
+        "-p", "--provider", choices=["openai", "anthropic", "openrouter"], help="LLM provider"
+    )
+    wiki_add_parser.add_argument("-m", "--model", help="Specific model override")
+    wiki_add_parser.add_argument(
+        "--max-pages",
+        type=int,
+        default=None,
+        help="Maximum pages to analyze",
+    )
+    wiki_add_parser.set_defaults(func=cmd_wiki_add)
+
+    wiki_remove_parser = wiki_subparsers.add_parser("remove", help="Remove a paper from the wiki")
+    wiki_remove_parser.add_argument("paper", help="Paper slug, title, or markdown path")
+    wiki_remove_parser.add_argument("--root", help="Wiki root directory")
+    wiki_remove_parser.add_argument(
+        "--delete-pdf",
+        action="store_true",
+        help="Also delete the stored PDF",
+    )
+    wiki_remove_parser.set_defaults(func=cmd_wiki_remove)
+
+    wiki_query_parser = wiki_subparsers.add_parser("query", help="Query the wiki")
+    wiki_query_parser.add_argument("question", help="Question or keyword query")
+    wiki_query_parser.add_argument("--root", help="Wiki root directory")
+    wiki_query_parser.add_argument(
+        "--top-k",
+        type=int,
+        default=5,
+        help="Number of matches to return",
+    )
+    wiki_query_parser.set_defaults(func=cmd_wiki_query)
+
+    wiki_rebuild_parser = wiki_subparsers.add_parser(
+        "rebuild",
+        help="Rebuild derived wiki artifacts",
+    )
+    wiki_rebuild_parser.add_argument("--root", help="Wiki root directory")
+    wiki_rebuild_parser.set_defaults(func=cmd_wiki_rebuild)
+
+    wiki_doctor_parser = wiki_subparsers.add_parser("doctor", help="Check wiki health")
+    wiki_doctor_parser.add_argument("--root", help="Wiki root directory")
+    wiki_doctor_parser.set_defaults(func=cmd_wiki_doctor)
+
+    wiki_ls_parser = wiki_subparsers.add_parser("ls", help="List papers in the wiki")
+    wiki_ls_parser.add_argument("--root", help="Wiki root directory")
+    wiki_ls_parser.set_defaults(func=cmd_wiki_ls)
+
+    wiki_status_parser = wiki_subparsers.add_parser("status", help="Show wiki status summary")
+    wiki_status_parser.add_argument("--root", help="Wiki root directory")
+    wiki_status_parser.set_defaults(func=cmd_wiki_status)
+
+    return parser
+
+
+def main():
+    """Main entry point for the CLI."""
+    parser = build_parser()
+    args = parser.parse_args()
     if hasattr(args, "func"):
         args.func(args)
     else:
