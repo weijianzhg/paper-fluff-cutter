@@ -429,8 +429,8 @@ Examples:
   fluff-cutter analyze paper.pdf
   fluff-cutter analyze https://arxiv.org/pdf/2411.19870
   fluff-cutter wiki init ./research-wiki
-  fluff-cutter wiki add https://arxiv.org/pdf/2411.19870 --root ./research-wiki
-  fluff-cutter wiki query "agents planning" --root ./research-wiki
+  fluff-cutter wiki add https://arxiv.org/pdf/2411.19870
+  fluff-cutter wiki query "agents planning"
         """,
     )
     parser.add_argument("-v", "--version", action="version", version=f"%(prog)s {__version__}")
