@@ -8,6 +8,9 @@ Most research has close to zero value. This tool uses multimodal LLMs to analyze
 2. **What's the actual innovation?** - What's the core idea in plain terms?
 3. **Is the evidence convincing?** - Do the experiments actually support the claims?
 
+Acknowledgement: the core idea is inspired by Andrej Karpathy's gist on cutting through paper fluff:
+https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f
+
 ## Quick Start
 
 ```bash
