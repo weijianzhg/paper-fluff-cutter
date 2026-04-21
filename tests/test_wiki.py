@@ -248,7 +248,9 @@ def test_resolve_paper_paths_returns_markdown_and_pdf_paths(initialized_wiki, tm
 
     assert resolved["slug"] == "agents-for-useful-things"
     assert resolved["page_path"] == page_path
-    assert resolved["pdf_path"] == initialized_wiki / "raw" / "pdfs" / "agents-for-useful-things.pdf"
+    assert resolved["pdf_path"] == (
+        initialized_wiki / "raw" / "pdfs" / "agents-for-useful-things.pdf"
+    )
 
 
 def test_resolve_paper_paths_rejects_pdf_outside_raw_pdfs(initialized_wiki):

@@ -563,9 +563,7 @@ Examples:
     )
     wiki_remove_parser.set_defaults(func=cmd_wiki_remove)
 
-    wiki_show_parser = wiki_subparsers.add_parser(
-        "show", help="Print a wiki paper markdown page"
-    )
+    wiki_show_parser = wiki_subparsers.add_parser("show", help="Print a wiki paper markdown page")
     wiki_show_parser.add_argument("paper", help="Paper slug, title, or markdown path")
     wiki_show_parser.add_argument("--root", help="Wiki root directory")
     wiki_show_parser.set_defaults(func=cmd_wiki_show)

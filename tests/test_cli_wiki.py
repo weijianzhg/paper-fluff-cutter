@@ -213,7 +213,15 @@ def test_main_wiki_pdf_open_calls_system_opener(wiki_root, monkeypatch, tmp_path
     monkeypatch.setattr(
         cli.sys,
         "argv",
-        ["fluff-cutter", "wiki", "pdf", "wiki/papers/agents-for-useful-things.md", "--root", str(wiki_root), "--open"],
+        [
+            "fluff-cutter",
+            "wiki",
+            "pdf",
+            "wiki/papers/agents-for-useful-things.md",
+            "--root",
+            str(wiki_root),
+            "--open",
+        ],
     )
 
     cli.main()
