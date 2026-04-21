@@ -26,9 +26,9 @@ def test_init_wiki_creates_expected_structure(tmp_path):
     assert (root / "fluff-cutter.yaml").exists()
     assert (root / "raw" / "pdfs").is_dir()
     assert (root / "wiki" / "papers").is_dir()
-    assert (root / "wiki" / "topics").is_dir()
-    assert (root / "wiki" / "concepts").is_dir()
-    assert (root / "wiki" / "queries").is_dir()
+    assert not (root / "wiki" / "topics").exists()
+    assert not (root / "wiki" / "concepts").exists()
+    assert not (root / "wiki" / "queries").exists()
     assert (root / "wiki" / "index.md").exists()
     assert (root / "wiki" / "overview.md").exists()
     assert (root / "wiki" / "log.md").exists()
@@ -86,7 +86,8 @@ def test_add_paper_to_wiki_creates_page_and_updates_artifacts(initialized_wiki, 
 
     status = wiki_status(initialized_wiki)
     assert status["paper_count"] == 1
-    assert status["query_count"] == 0
+    assert status["pdf_count"] == 1
+    assert status["orphan_pdf_count"] == 0
 
 
 def test_add_paper_to_wiki_renames_existing_raw_pdf_without_orphaning(initialized_wiki):
@@ -183,6 +184,26 @@ def test_query_wiki_returns_ranked_matches_and_snippets(initialized_wiki, tmp_pa
     assert result["matches"][0]["title"] == "Agents for Useful Things"
     assert "planning" in result["matches"][0]["snippet"].lower()
     assert result["matches"][0]["score"] >= result["matches"][1]["score"]
+
+
+def test_wiki_status_reports_pdf_counts_and_orphans(initialized_wiki, tmp_path):
+    pdf_path = tmp_path / "paper.pdf"
+    pdf_path.write_bytes(b"%PDF-1.4 fake")
+    add_paper_to_wiki(
+        initialized_wiki,
+        source_ref="https://example.com/agents",
+        pdf_path=pdf_path,
+        title="Agents for Useful Things",
+        analysis="Agents coordinate tools and planning to solve real tasks.",
+        model_info="OpenAI (gpt-5.2)",
+    )
+
+    orphan_pdf = initialized_wiki / "raw" / "pdfs" / "orphan.pdf"
+    orphan_pdf.write_bytes(b"%PDF-1.4 fake")
+
+    status = wiki_status(initialized_wiki)
+
+    assert status == {"paper_count": 1, "pdf_count": 2, "orphan_pdf_count": 1}
 
 
 def test_doctor_wiki_reports_index_drift_and_orphan_pdf(initialized_wiki, tmp_path):

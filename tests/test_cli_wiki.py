@@ -85,7 +85,9 @@ def test_main_wiki_status_prints_counts(wiki_root, monkeypatch, capsys, tmp_path
 
     out = capsys.readouterr().out
     assert "paper_count: 1" in out
-    assert "query_count: 0" in out
+    assert "pdf_count: 1" in out
+    assert "orphan_pdf_count: 0" in out
+    assert "query_count" not in out
 
 
 def test_main_wiki_query_prints_matches(wiki_root, monkeypatch, capsys, tmp_path):

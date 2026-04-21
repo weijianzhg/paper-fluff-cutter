@@ -15,9 +15,6 @@ CONFIG_FILENAME = "fluff-cutter.yaml"
 RAW_PDFS_DIR = Path("raw") / "pdfs"
 WIKI_DIR = Path("wiki")
 PAPERS_DIR = WIKI_DIR / "papers"
-TOPICS_DIR = WIKI_DIR / "topics"
-CONCEPTS_DIR = WIKI_DIR / "concepts"
-QUERIES_DIR = WIKI_DIR / "queries"
 INDEX_FILE = WIKI_DIR / "index.md"
 OVERVIEW_FILE = WIKI_DIR / "overview.md"
 LOG_FILE = WIKI_DIR / "log.md"
@@ -38,18 +35,6 @@ class WikiPaths:
     @property
     def papers(self) -> Path:
         return self.root / PAPERS_DIR
-
-    @property
-    def topics(self) -> Path:
-        return self.root / TOPICS_DIR
-
-    @property
-    def concepts(self) -> Path:
-        return self.root / CONCEPTS_DIR
-
-    @property
-    def queries(self) -> Path:
-        return self.root / QUERIES_DIR
 
     @property
     def index(self) -> Path:
@@ -144,18 +129,12 @@ def init_wiki(root: Path | str) -> Path:
     paths.root.mkdir(parents=True, exist_ok=True)
     paths.raw_pdfs.mkdir(parents=True, exist_ok=True)
     paths.papers.mkdir(parents=True, exist_ok=True)
-    paths.topics.mkdir(parents=True, exist_ok=True)
-    paths.concepts.mkdir(parents=True, exist_ok=True)
-    paths.queries.mkdir(parents=True, exist_ok=True)
 
     config = {
         "version": 1,
         "raw_pdfs_dir": str(RAW_PDFS_DIR),
         "wiki_dir": str(WIKI_DIR),
         "papers_dir": str(PAPERS_DIR),
-        "topics_dir": str(TOPICS_DIR),
-        "concepts_dir": str(CONCEPTS_DIR),
-        "queries_dir": str(QUERIES_DIR),
     }
     _write_text(paths.config, yaml.safe_dump(config, sort_keys=False))
 
@@ -183,9 +162,6 @@ def validate_wiki_root(root: Path | str) -> Path:
         paths.config,
         paths.raw_pdfs,
         paths.papers,
-        paths.topics,
-        paths.concepts,
-        paths.queries,
         paths.index,
         paths.overview,
         paths.log,
@@ -416,10 +392,16 @@ def list_papers(root: Path | str) -> list[dict[str, Any]]:
 def wiki_status(root: Path | str) -> dict[str, Any]:
     paths = _paths(root)
     papers = _paper_entries(paths.root)
-    query_count = len(list(paths.queries.glob("*.md"))) if paths.queries.exists() else 0
+    referenced_pdfs = {entry["pdf_path"] for entry in papers if entry["pdf_path"]}
+    pdf_count = len(list(paths.raw_pdfs.glob("*.pdf"))) if paths.raw_pdfs.exists() else 0
+    orphan_pdf_count = 0
+    if paths.raw_pdfs.exists():
+        for pdf_path in paths.raw_pdfs.glob("*.pdf"):
+            rel = pdf_path.relative_to(paths.root).as_posix()
+            if rel not in referenced_pdfs:
+                orphan_pdf_count += 1
     return {
         "paper_count": len(papers),
-        "query_count": query_count,
-        "topic_count": len(list(paths.topics.glob("*.md"))) if paths.topics.exists() else 0,
-        "concept_count": len(list(paths.concepts.glob("*.md"))) if paths.concepts.exists() else 0,
+        "pdf_count": pdf_count,
+        "orphan_pdf_count": orphan_pdf_count,
     }

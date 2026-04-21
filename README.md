@@ -70,9 +70,6 @@ research-wiki/
 │   └── pdfs/
 └── wiki/
     ├── papers/
-    ├── topics/
-    ├── concepts/
-    ├── queries/
     ├── index.md
     ├── overview.md
     └── log.md
