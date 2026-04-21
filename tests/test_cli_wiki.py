@@ -85,7 +85,9 @@ def test_main_wiki_status_prints_counts(wiki_root, monkeypatch, capsys, tmp_path
 
     out = capsys.readouterr().out
     assert "paper_count: 1" in out
-    assert "query_count: 0" in out
+    assert "pdf_count: 1" in out
+    assert "orphan_pdf_count: 0" in out
+    assert "query_count" not in out
 
 
 def test_main_wiki_query_prints_matches(wiki_root, monkeypatch, capsys, tmp_path):
@@ -111,6 +113,203 @@ def test_main_wiki_query_prints_matches(wiki_root, monkeypatch, capsys, tmp_path
     out = capsys.readouterr().out
     assert "Agents for Useful Things" in out
     assert "planning" in out.lower()
+
+
+def test_main_wiki_show_prints_paper_markdown(wiki_root, monkeypatch, capsys, tmp_path):
+    pdf_path = tmp_path / "paper.pdf"
+    pdf_path.write_bytes(b"%PDF-1.4 fake")
+    add_paper_to_wiki(
+        wiki_root,
+        source_ref="https://example.com/agents",
+        pdf_path=pdf_path,
+        title="Agents for Useful Things",
+        analysis="Agents coordinate tools and planning to solve real tasks.",
+        model_info="OpenAI (gpt-5.2)",
+    )
+
+    monkeypatch.setattr(
+        cli.sys,
+        "argv",
+        ["fluff-cutter", "wiki", "show", "agents-for-useful-things", "--root", str(wiki_root)],
+    )
+
+    cli.main()
+
+    out = capsys.readouterr().out
+    assert "title: Agents for Useful Things" in out
+    assert "## Analysis" in out
+
+
+def test_main_wiki_show_rejects_missing_paper(wiki_root, monkeypatch, capsys):
+    monkeypatch.setattr(
+        cli.sys,
+        "argv",
+        ["fluff-cutter", "wiki", "show", "missing-paper", "--root", str(wiki_root)],
+    )
+
+    with pytest.raises(SystemExit):
+        cli.main()
+
+    err = capsys.readouterr().err
+    assert "Paper not found" in err
+
+
+def test_main_wiki_pdf_prints_stored_pdf_path(wiki_root, monkeypatch, capsys, tmp_path):
+    pdf_path = tmp_path / "paper.pdf"
+    pdf_path.write_bytes(b"%PDF-1.4 fake")
+    add_paper_to_wiki(
+        wiki_root,
+        source_ref="https://example.com/agents",
+        pdf_path=pdf_path,
+        title="Agents for Useful Things",
+        analysis="Agents coordinate tools and planning to solve real tasks.",
+        model_info="OpenAI (gpt-5.2)",
+    )
+
+    monkeypatch.setattr(
+        cli.sys,
+        "argv",
+        ["fluff-cutter", "wiki", "pdf", "Agents for Useful Things", "--root", str(wiki_root)],
+    )
+
+    cli.main()
+
+    out = capsys.readouterr().out.strip()
+    assert out.endswith("raw/pdfs/agents-for-useful-things.pdf")
+
+
+def test_main_wiki_pdf_rejects_missing_paper(wiki_root, monkeypatch, capsys):
+    monkeypatch.setattr(
+        cli.sys,
+        "argv",
+        ["fluff-cutter", "wiki", "pdf", "missing-paper", "--root", str(wiki_root)],
+    )
+
+    with pytest.raises(SystemExit):
+        cli.main()
+
+    err = capsys.readouterr().err
+    assert "Paper not found" in err
+
+
+def test_main_wiki_pdf_open_calls_system_opener(wiki_root, monkeypatch, tmp_path):
+    pdf_path = tmp_path / "paper.pdf"
+    pdf_path.write_bytes(b"%PDF-1.4 fake")
+    add_paper_to_wiki(
+        wiki_root,
+        source_ref="https://example.com/agents",
+        pdf_path=pdf_path,
+        title="Agents for Useful Things",
+        analysis="Agents coordinate tools and planning to solve real tasks.",
+        model_info="OpenAI (gpt-5.2)",
+    )
+
+    opened = {}
+
+    def fake_open(path):
+        opened["path"] = path
+
+    monkeypatch.setattr(cli, "_open_path", fake_open)
+    monkeypatch.setattr(
+        cli.sys,
+        "argv",
+        [
+            "fluff-cutter",
+            "wiki",
+            "pdf",
+            "wiki/papers/agents-for-useful-things.md",
+            "--root",
+            str(wiki_root),
+            "--open",
+        ],
+    )
+
+    cli.main()
+
+    assert opened["path"] == wiki_root / "raw" / "pdfs" / "agents-for-useful-things.pdf"
+
+
+def test_main_wiki_pdf_rejects_missing_pdf_path(wiki_root, monkeypatch, capsys):
+    page_path = wiki_root / "wiki" / "papers" / "no-pdf.md"
+    page_path.write_text(
+        "---\n"
+        "title: No PDF\n"
+        "slug: no-pdf\n"
+        "source: https://example.com/no-pdf\n"
+        "added: 2026-04-21\n"
+        "model_info: TestModel\n"
+        "---\n\n"
+        "# No PDF\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        cli.sys,
+        "argv",
+        ["fluff-cutter", "wiki", "pdf", "no-pdf", "--root", str(wiki_root)],
+    )
+
+    with pytest.raises(SystemExit):
+        cli.main()
+
+    err = capsys.readouterr().err
+    assert "has no stored PDF path" in err
+
+
+def test_main_wiki_pdf_rejects_out_of_bounds_pdf_path(wiki_root, monkeypatch, capsys):
+    page_path = wiki_root / "wiki" / "papers" / "bad-pdf.md"
+    page_path.write_text(
+        "---\n"
+        "title: Bad PDF\n"
+        "slug: bad-pdf\n"
+        "source: https://example.com/bad-pdf\n"
+        "pdf_path: ../secret.pdf\n"
+        "added: 2026-04-21\n"
+        "model_info: TestModel\n"
+        "---\n\n"
+        "# Bad PDF\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        cli.sys,
+        "argv",
+        ["fluff-cutter", "wiki", "pdf", "bad-pdf", "--root", str(wiki_root)],
+    )
+
+    with pytest.raises(SystemExit):
+        cli.main()
+
+    err = capsys.readouterr().err
+    assert "outside raw/pdfs" in err
+
+
+def test_main_wiki_pdf_rejects_missing_pdf_file(wiki_root, monkeypatch, capsys):
+    page_path = wiki_root / "wiki" / "papers" / "missing-pdf.md"
+    page_path.write_text(
+        "---\n"
+        "title: Missing PDF\n"
+        "slug: missing-pdf\n"
+        "source: https://example.com/missing-pdf\n"
+        "pdf_path: raw/pdfs/missing-pdf.pdf\n"
+        "added: 2026-04-21\n"
+        "model_info: TestModel\n"
+        "---\n\n"
+        "# Missing PDF\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        cli.sys,
+        "argv",
+        ["fluff-cutter", "wiki", "pdf", "missing-pdf", "--root", str(wiki_root)],
+    )
+
+    with pytest.raises(SystemExit):
+        cli.main()
+
+    err = capsys.readouterr().err
+    assert "Stored PDF not found" in err
 
 
 def test_main_wiki_ls_prints_known_papers(wiki_root, monkeypatch, capsys, tmp_path):

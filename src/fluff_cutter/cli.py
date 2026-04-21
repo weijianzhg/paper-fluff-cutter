@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import argparse
 import getpass
+import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -33,6 +35,7 @@ from .wiki import (
     query_wiki,
     rebuild_wiki,
     remove_paper_from_wiki,
+    resolve_paper_paths,
     validate_wiki_root,
     wiki_status,
 )
@@ -371,6 +374,50 @@ def cmd_wiki_remove(args):
     print(f"  pdf_deleted: {removed['pdf_deleted']}")
 
 
+def _open_path(path: Path) -> None:
+    if sys.platform == "darwin":
+        subprocess.run(["open", str(path)], check=True)
+        return
+    if os.name == "nt":
+        os.startfile(str(path))  # type: ignore[attr-defined]
+        return
+    subprocess.run(["xdg-open", str(path)], check=True)
+
+
+def cmd_wiki_show(args):
+    root = _resolve_wiki_root(args.root)
+    try:
+        resolved = resolve_paper_paths(root, args.paper)
+    except (FileNotFoundError, ValueError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+    print(resolved["page_path"].read_text(encoding="utf-8"))
+
+
+def cmd_wiki_pdf(args):
+    root = _resolve_wiki_root(args.root)
+    try:
+        resolved = resolve_paper_paths(root, args.paper)
+    except (FileNotFoundError, ValueError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+    pdf_path = resolved["pdf_path"]
+    if pdf_path is None:
+        print(f"Paper '{resolved['slug']}' has no stored PDF path.", file=sys.stderr)
+        sys.exit(1)
+    if not pdf_path.exists():
+        print(f"Stored PDF not found: {pdf_path}", file=sys.stderr)
+        sys.exit(1)
+    if args.open:
+        try:
+            _open_path(pdf_path)
+        except Exception as exc:
+            print(f"Error opening PDF: {exc}", file=sys.stderr)
+            sys.exit(1)
+    else:
+        print(pdf_path)
+
+
 def cmd_wiki_query(args):
     root = _resolve_wiki_root(args.root)
     result = query_wiki(root, args.question, top_k=args.top_k)
@@ -430,6 +477,8 @@ Examples:
   fluff-cutter analyze https://arxiv.org/pdf/2411.19870
   fluff-cutter wiki init ./research-wiki
   fluff-cutter wiki add https://arxiv.org/pdf/2411.19870
+  fluff-cutter wiki show agents-for-useful-things
+  fluff-cutter wiki pdf agents-for-useful-things --open
   fluff-cutter wiki query "agents planning"
         """,
     )
@@ -513,6 +562,23 @@ Examples:
         help="Also delete the stored PDF",
     )
     wiki_remove_parser.set_defaults(func=cmd_wiki_remove)
+
+    wiki_show_parser = wiki_subparsers.add_parser("show", help="Print a wiki paper markdown page")
+    wiki_show_parser.add_argument("paper", help="Paper slug, title, or markdown path")
+    wiki_show_parser.add_argument("--root", help="Wiki root directory")
+    wiki_show_parser.set_defaults(func=cmd_wiki_show)
+
+    wiki_pdf_parser = wiki_subparsers.add_parser(
+        "pdf", help="Show or open the stored PDF for a wiki paper"
+    )
+    wiki_pdf_parser.add_argument("paper", help="Paper slug, title, or markdown path")
+    wiki_pdf_parser.add_argument("--root", help="Wiki root directory")
+    wiki_pdf_parser.add_argument(
+        "--open",
+        action="store_true",
+        help="Open the stored PDF in the default system viewer",
+    )
+    wiki_pdf_parser.set_defaults(func=cmd_wiki_pdf)
 
     wiki_query_parser = wiki_subparsers.add_parser("query", help="Query the wiki")
     wiki_query_parser.add_argument("question", help="Question or keyword query")
