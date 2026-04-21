@@ -271,6 +271,26 @@ def resolve_paper_slug(root: Path | str, identifier: str) -> str:
     raise FileNotFoundError(f"Paper not found: {identifier}")
 
 
+def _resolve_pdf_path(paths: WikiPaths, slug: str, pdf_rel: str | None) -> Path | None:
+    if not pdf_rel:
+        return None
+    candidate = (paths.root / pdf_rel).resolve()
+    try:
+        candidate.relative_to(paths.raw_pdfs.resolve())
+    except ValueError as exc:
+        raise ValueError(f"Paper '{slug}' references a PDF outside raw/pdfs: {pdf_rel}") from exc
+    return candidate
+
+
+def resolve_paper_paths(root: Path | str, identifier: str) -> dict[str, Any]:
+    paths = _paths(root)
+    slug = resolve_paper_slug(paths.root, identifier)
+    page_path = paths.papers / f"{slug}.md"
+    meta, _ = _read_frontmatter(page_path)
+    pdf_path = _resolve_pdf_path(paths, slug, meta.get("pdf_path"))
+    return {"slug": slug, "page_path": page_path, "pdf_path": pdf_path}
+
+
 def remove_paper_from_wiki(
     root: Path | str,
     identifier: str,
@@ -286,8 +306,8 @@ def remove_paper_from_wiki(
     page_path.unlink()
     pdf_rel = meta.get("pdf_path")
     if delete_pdf and pdf_rel:
-        pdf_path = paths.root / pdf_rel
-        if pdf_path.exists():
+        pdf_path = _resolve_pdf_path(paths, slug, pdf_rel)
+        if pdf_path and pdf_path.exists():
             pdf_path.unlink()
             pdf_deleted = True
 

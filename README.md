@@ -52,7 +52,8 @@ fluff-cutter wiki add https://arxiv.org/pdf/2411.19870
 
 # Inspect the wiki
 fluff-cutter wiki ls
-fluff-cutter wiki status
+fluff-cutter wiki show agents-for-useful-things
+fluff-cutter wiki pdf agents-for-useful-things
 fluff-cutter wiki query "agents planning"
 
 # Maintenance

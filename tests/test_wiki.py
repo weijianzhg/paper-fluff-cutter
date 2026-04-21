@@ -12,6 +12,7 @@ from fluff_cutter.wiki import (
     query_wiki,
     rebuild_wiki,
     remove_paper_from_wiki,
+    resolve_paper_paths,
     resolve_paper_slug,
     validate_wiki_root,
     wiki_status,
@@ -229,6 +230,65 @@ def test_doctor_wiki_reports_index_drift_and_orphan_pdf(initialized_wiki, tmp_pa
 
     assert any("missing from index" in issue for issue in report["issues"])
     assert any("orphan PDF" in issue for issue in report["issues"])
+
+
+def test_resolve_paper_paths_returns_markdown_and_pdf_paths(initialized_wiki, tmp_path):
+    pdf_path = tmp_path / "paper.pdf"
+    pdf_path.write_bytes(b"%PDF-1.4 fake")
+    page_path = add_paper_to_wiki(
+        initialized_wiki,
+        source_ref="https://example.com/agents",
+        pdf_path=pdf_path,
+        title="Agents for Useful Things",
+        analysis="Agents coordinate tools and planning to solve real tasks.",
+        model_info="OpenAI (gpt-5.2)",
+    )
+
+    resolved = resolve_paper_paths(initialized_wiki, "agents-for-useful-things")
+
+    assert resolved["slug"] == "agents-for-useful-things"
+    assert resolved["page_path"] == page_path
+    assert resolved["pdf_path"] == initialized_wiki / "raw" / "pdfs" / "agents-for-useful-things.pdf"
+
+
+def test_resolve_paper_paths_rejects_pdf_outside_raw_pdfs(initialized_wiki):
+    page_path = initialized_wiki / "wiki" / "papers" / "bad-path.md"
+    page_path.write_text(
+        "---\n"
+        "title: Bad Path\n"
+        "slug: bad-path\n"
+        "source: https://example.com/bad\n"
+        "pdf_path: ../secret.pdf\n"
+        "added: 2026-04-21\n"
+        "model_info: TestModel\n"
+        "---\n\n"
+        "# Bad Path\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="outside raw/pdfs"):
+        resolve_paper_paths(initialized_wiki, "bad-path")
+
+
+def test_remove_paper_from_wiki_rejects_pdf_outside_raw_pdfs(initialized_wiki):
+    pdf_path = initialized_wiki / "raw" / "pdfs" / "paper.pdf"
+    pdf_path.write_bytes(b"%PDF-1.4 fake")
+    page_path = initialized_wiki / "wiki" / "papers" / "bad-delete.md"
+    page_path.write_text(
+        "---\n"
+        "title: Bad Delete\n"
+        "slug: bad-delete\n"
+        "source: https://example.com/bad-delete\n"
+        "pdf_path: ../secret.pdf\n"
+        "added: 2026-04-21\n"
+        "model_info: TestModel\n"
+        "---\n\n"
+        "# Bad Delete\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="outside raw/pdfs"):
+        remove_paper_from_wiki(initialized_wiki, "bad-delete", delete_pdf=True)
 
 
 def test_resolve_paper_slug_accepts_slug_path_or_title(initialized_wiki, tmp_path):
