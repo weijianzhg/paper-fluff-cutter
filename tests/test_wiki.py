@@ -64,8 +64,16 @@ def test_add_paper_to_wiki_creates_page_and_updates_artifacts(initialized_wiki, 
         source_ref="https://arxiv.org/abs/1234.5678",
         pdf_path=pdf_path,
         title="Agents for Useful Things",
-        analysis="A practical paper about agents doing useful things.",
+        analysis="## Why Should I Care?\n\nA practical paper about agents doing useful things.",
         model_info="OpenAI (gpt-5.2)",
+        paper_metadata={
+            "authors": ["Example Author"],
+            "published_year": 2026,
+            "research_type": "systems",
+            "topics": ["ai-agents"],
+            "concepts": ["tool use"],
+            "prerequisites": [],
+        },
     )
 
     assert page_path.exists()
@@ -73,6 +81,11 @@ def test_add_paper_to_wiki_creates_page_and_updates_artifacts(initialized_wiki, 
     assert "title: Agents for Useful Things" in content
     assert "source: https://arxiv.org/abs/1234.5678" in content
     assert "A practical paper about agents doing useful things." in content
+    assert "content_type: research-paper" in content
+    assert "research_type: systems" in content
+    assert "- ai-agents" in content
+    assert "## Why Should I Care?" in content
+    assert "## Analysis" not in content
 
     copied_pdf = initialized_wiki / "raw" / "pdfs" / "agents-for-useful-things.pdf"
     assert copied_pdf.exists()

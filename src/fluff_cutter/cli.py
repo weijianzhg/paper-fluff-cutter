@@ -318,7 +318,14 @@ def cmd_analyze(args):
     )
     if not args.print_output:
         output_path = args.output or str(Path(local_paper_path).with_suffix(".md"))
-        save_analysis(result["title"], result["analysis"], result["model_info"], output_path)
+        save_analysis(
+            result["title"],
+            result["analysis"],
+            result["model_info"],
+            output_path,
+            paper_metadata=result["metadata"],
+            source=args.paper_path,
+        )
         print(f"Analysis saved to: {output_path}")
 
 
@@ -362,6 +369,7 @@ def cmd_wiki_add(args):
         title=result["title"],
         analysis=result["analysis"],
         model_info=result["model_info"],
+        paper_metadata=result["metadata"],
     )
     print(f"Wiki page saved to: {page_path}")
 

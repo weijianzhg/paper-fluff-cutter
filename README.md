@@ -79,6 +79,37 @@ research-wiki/
 By default, results are printed to the terminal and saved as a `.md` file next to the input PDF.
 Model output streams live during analysis (provider-side streaming), so you see tokens immediately instead of waiting for full completion.
 
+## Obsidian-ready notes
+
+Saved analyses and wiki paper pages include YAML properties that Obsidian can index:
+
+```yaml
+---
+title: Scaling Test-Time Compute
+source: https://arxiv.org/abs/2411.19870
+created: 2026-07-30
+content_type: research-paper
+authors:
+  - Example Author
+published_year: 2025
+research_type: empirical
+concepts:
+  - verifier-guided search
+prerequisites:
+  - transformer architecture
+tags:
+  - paper
+  - summary
+  - language-models
+  - reasoning
+model: OpenAI (gpt-5.2)
+---
+```
+
+The visible note uses one paper-title H1 followed by consistent H2 analysis sections.
+Model-generated metadata is validated and removed from the note body, so files can be
+dropped directly into an Obsidian vault and organized with Properties, tags, and search.
+
 ## Supported Providers
 
 | Provider | Default Model | Env Variable |

@@ -137,7 +137,8 @@ def test_main_wiki_show_prints_paper_markdown(wiki_root, monkeypatch, capsys, tm
 
     out = capsys.readouterr().out
     assert "title: Agents for Useful Things" in out
-    assert "## Analysis" in out
+    assert "content_type: research-paper" in out
+    assert "# Agents for Useful Things" in out
 
 
 def test_main_wiki_show_rejects_missing_paper(wiki_root, monkeypatch, capsys):

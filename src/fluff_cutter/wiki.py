@@ -96,7 +96,7 @@ def _paper_entries(root: Path | str) -> list[dict[str, Any]]:
                 "source": meta.get("source", ""),
                 "pdf_path": meta.get("pdf_path", ""),
                 "added": meta.get("added", ""),
-                "model_info": meta.get("model_info", ""),
+                "model_info": meta.get("model", meta.get("model_info", "")),
                 "summary": _body_summary(body),
                 "body": body,
             }
@@ -227,6 +227,7 @@ def add_paper_to_wiki(
     title: str,
     analysis: str,
     model_info: str,
+    paper_metadata: dict[str, Any] | None = None,
 ) -> Path:
     paths = _paths(root)
     pdf_path = Path(pdf_path).expanduser().resolve()
@@ -240,16 +241,22 @@ def add_paper_to_wiki(
         shutil.copy2(pdf_path, target_pdf)
 
     page_path = paths.papers / f"{slug}.md"
-    metadata = {
+    extracted = paper_metadata or {}
+    metadata: dict[str, Any] = {
         "title": title,
         "slug": slug,
         "source": source_ref,
         "pdf_path": target_pdf.relative_to(paths.root).as_posix(),
         "added": today_str(),
-        "model_info": model_info,
+        "content_type": "research-paper",
+        "model": model_info,
     }
+    for field in ("authors", "published_year", "research_type", "concepts", "prerequisites"):
+        if field in extracted:
+            metadata[field] = extracted[field]
+    metadata["tags"] = ["paper", "summary", *extracted.get("topics", [])]
     frontmatter = yaml.safe_dump(metadata, sort_keys=False).strip()
-    body = f"---\n{frontmatter}\n---\n\n# {title}\n\n## Analysis\n\n{analysis.strip()}\n"
+    body = f"---\n{frontmatter}\n---\n\n# {title}\n\n{analysis.strip()}\n"
     _write_text(page_path, body)
     rebuild_wiki(paths.root)
     _append_log(paths.root, "ingest", title, f"source: {source_ref}")
