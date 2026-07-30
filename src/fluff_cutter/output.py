@@ -9,12 +9,28 @@ from typing import Any
 import yaml
 
 MAX_FILENAME_TITLE_LENGTH = 80
-ARXIV_ID_PATTERN = re.compile(r"\d{4}\.\d{4,5}(?:v\d+)?", re.IGNORECASE)
+MAX_FILENAME_SOURCE_BYTES = 48
+MAX_FILENAME_BYTES = 240
 
 
 def strip_leading_h1(analysis: str) -> str:
     """Remove a model-generated H1 because the note supplies its own title."""
     return re.sub(r"\A\s*#[ \t]+[^\n]*(?:\n+|$)", "", analysis, count=1).strip()
+
+
+def _filename_slug(text: str) -> str:
+    slug = re.sub(r"[^\w]+", "-", text.casefold(), flags=re.UNICODE)
+    return slug.replace("_", "-").strip("-")
+
+
+def _source_slug(text: str) -> str:
+    slug = re.sub(r"[^\w.]+", "-", text.casefold(), flags=re.UNICODE)
+    return slug.replace("_", "-").strip("-.")
+
+
+def _truncate_utf8(text: str, max_bytes: int) -> str:
+    """Truncate text without splitting a UTF-8 code point."""
+    return text.encode("utf-8")[:max_bytes].decode("utf-8", errors="ignore")
 
 
 def default_analysis_path(
@@ -23,13 +39,22 @@ def default_analysis_path(
     created_at: datetime | None = None,
 ) -> Path:
     """Build a recognizable default filename from the paper title and extraction date."""
-    title_slug = re.sub(r"[^\w]+", "-", title.casefold(), flags=re.UNICODE)
-    title_slug = title_slug.replace("_", "-").strip("-")
+    title_slug = _filename_slug(title)
     title_slug = title_slug[:MAX_FILENAME_TITLE_LENGTH].rstrip("-") or "paper"
     extraction_date = (created_at or datetime.now()).strftime("%Y-%m-%d")
-    source_stem = Path(pdf_path).stem
-    source_id = f"-{source_stem.casefold()}" if ARXIV_ID_PATTERN.fullmatch(source_stem) else ""
-    return Path(pdf_path).with_name(f"{title_slug}{source_id}-{extraction_date}.md")
+    source_slug = _truncate_utf8(
+        _source_slug(Path(pdf_path).stem),
+        MAX_FILENAME_SOURCE_BYTES,
+    ).rstrip("-.")
+    source_id = (
+        f"-{source_slug}"
+        if source_slug and source_slug not in {"paper", "downloaded-paper", title_slug}
+        else ""
+    )
+    suffix = f"{source_id}-{extraction_date}.md"
+    title_byte_budget = MAX_FILENAME_BYTES - len(suffix.encode("utf-8"))
+    title_slug = _truncate_utf8(title_slug, title_byte_budget).rstrip("-") or "paper"
+    return Path(pdf_path).with_name(f"{title_slug}{suffix}")
 
 
 def build_paper_properties(

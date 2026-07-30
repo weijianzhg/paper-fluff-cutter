@@ -5,6 +5,7 @@ from datetime import datetime
 import yaml
 
 from fluff_cutter.output import (
+    MAX_FILENAME_BYTES,
     MAX_FILENAME_TITLE_LENGTH,
     default_analysis_path,
     format_analysis,
@@ -34,6 +35,15 @@ class TestDefaultAnalysisPath:
 
         assert result.name == "理解-ai-safely-2026-07-30.md"
 
+    def test_uses_source_stem_to_disambiguate_same_title(self, tmp_path):
+        created_at = datetime(2026, 7, 30)
+
+        first = default_analysis_path(tmp_path / "first.pdf", "Same Title", created_at)
+        second = default_analysis_path(tmp_path / "second.pdf", "Same Title", created_at)
+
+        assert first.name == "same-title-first-2026-07-30.md"
+        assert second.name == "same-title-second-2026-07-30.md"
+
     def test_limits_title_fragment_length(self, tmp_path):
         result = default_analysis_path(
             tmp_path / "paper.pdf",
@@ -43,6 +53,16 @@ class TestDefaultAnalysisPath:
 
         title_fragment = result.name.removesuffix("-2026-07-30.md")
         assert len(title_fragment) == MAX_FILENAME_TITLE_LENGTH
+
+    def test_limits_multibyte_filename_to_filesystem_safe_size(self, tmp_path):
+        result = default_analysis_path(
+            tmp_path / "2411.19870.pdf",
+            "𝒜" * 80,
+            datetime(2026, 7, 30),
+        )
+
+        assert len(result.name.encode("utf-8")) <= MAX_FILENAME_BYTES
+        assert result.name.endswith("-2411.19870-2026-07-30.md")
 
     def test_uses_paper_fallback_when_title_has_no_filename_characters(self, tmp_path):
         result = default_analysis_path(

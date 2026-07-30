@@ -486,7 +486,7 @@ Examples:
     analyze_parser.add_argument(
         "-o",
         "--output",
-        help="Output file path (default: same name as input with .md extension)",
+        help="Output file path (default: title, source identifier, and extraction date)",
     )
     analyze_parser.add_argument(
         "--print",

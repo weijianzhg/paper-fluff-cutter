@@ -9,8 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Saved analyses now use recognizable filenames containing a paper-title fragment and
-  extraction date, while explicit `--output` paths remain unchanged
+- Saved analyses now use recognizable filenames containing a paper-title fragment, source
+  identifier, and extraction date, while explicit `--output` paths remain unchanged
 - Updated test and publishing workflows to current GitHub Actions runtimes, removing
   Node.js 20 deprecation warnings
 
