@@ -44,6 +44,15 @@ class TestDefaultAnalysisPath:
         title_fragment = result.name.removesuffix("-2026-07-30.md")
         assert len(title_fragment) == MAX_FILENAME_TITLE_LENGTH
 
+    def test_uses_paper_fallback_when_title_has_no_filename_characters(self, tmp_path):
+        result = default_analysis_path(
+            tmp_path / "paper.pdf",
+            "?! /",
+            datetime(2026, 7, 30),
+        )
+
+        assert result.name == "paper-2026-07-30.md"
+
 
 class TestFormatAnalysis:
     """Tests for format_analysis function."""
