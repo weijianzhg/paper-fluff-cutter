@@ -19,6 +19,7 @@ from .config import (
     get_default_wiki_root,
     is_configured,
     load_config,
+    load_config_file,
     save_config,
     set_default_wiki_root,
 )
@@ -44,6 +45,12 @@ PROVIDERS = {
     "openai": OpenAIProvider,
     "anthropic": AnthropicProvider,
     "openrouter": OpenRouterProvider,
+}
+
+PROVIDER_LABELS = {
+    "openai": "OpenAI",
+    "anthropic": "Anthropic",
+    "openrouter": "OpenRouter",
 }
 
 
@@ -73,135 +80,61 @@ def cmd_init(args):
     print("=" * 40)
     print()
 
+    stored_config = load_config_file()
     existing_config = load_config()
-    existing_openai_key = existing_config.get("openai_api_key")
-    existing_anthropic_key = existing_config.get("anthropic_api_key")
-    existing_openrouter_key = existing_config.get("openrouter_api_key")
+    provider_names = list(PROVIDERS)
+    current_default = existing_config.get("default_provider")
+    default_provider = current_default if current_default in PROVIDERS else "anthropic"
 
-    if existing_openai_key or existing_anthropic_key or existing_openrouter_key:
-        print("Current configuration:")
-        if existing_openai_key:
-            print(f"  OpenAI API Key: {_mask_key(existing_openai_key)}")
-        if existing_anthropic_key:
-            print(f"  Anthropic API Key: {_mask_key(existing_anthropic_key)}")
-        if existing_openrouter_key:
-            print(f"  OpenRouter API Key: {_mask_key(existing_openrouter_key)}")
-        print()
-
-    config = {}
-
-    print("Enter your API keys (press Enter to keep existing or skip):")
+    print(f"Providers: {', '.join(provider_names)}")
+    while True:
+        provider = prompt_with_default("Provider", default=default_provider).lower()
+        if provider in PROVIDERS:
+            break
+        print(f"Please choose from: {', '.join(provider_names)}")
     print()
 
-    openai_key = prompt_with_default(
-        "OpenAI API Key",
-        default=existing_openai_key or "",
+    provider_label = PROVIDER_LABELS[provider]
+    key_name = f"{provider}_api_key"
+    existing_key = existing_config.get(key_name)
+    api_key = prompt_with_default(
+        f"{provider_label} API Key",
+        default=existing_key or "",
         password=True,
     )
-    if openai_key:
-        config["openai_api_key"] = openai_key
-        print(
-            "  OpenAI API key updated"
-            if openai_key != existing_openai_key
-            else "  OpenAI API key kept"
-        )
-
-    anthropic_key = prompt_with_default(
-        "Anthropic API Key", default=existing_anthropic_key or "", password=True
-    )
-    if anthropic_key:
-        config["anthropic_api_key"] = anthropic_key
-        print(
-            "  Anthropic API key updated"
-            if anthropic_key != existing_anthropic_key
-            else "  Anthropic API key kept"
-        )
-
-    openrouter_key = prompt_with_default(
-        "OpenRouter API Key", default=existing_openrouter_key or "", password=True
-    )
-    if openrouter_key:
-        config["openrouter_api_key"] = openrouter_key
-        print(
-            "  OpenRouter API key updated"
-            if openrouter_key != existing_openrouter_key
-            else "  OpenRouter API key kept"
-        )
-
-    if not config:
+    if not api_key:
         print()
-        print("No API keys provided. Configuration not saved.")
-        print("You can set keys via environment variables instead:")
-        print("  export OPENAI_API_KEY=***")
-        print("  export ANTHROPIC_API_KEY=***")
-        print("  export OPENROUTER_API_KEY=***")
+        env_name = f"{provider.upper()}_API_KEY"
+        print(f"No {provider_label} API key provided. Configuration not saved.")
+        print(f"You can also set it with: export {env_name}=***")
         return
 
-    print()
-    available_providers = []
-    if "openai_api_key" in config:
-        available_providers.append("openai")
-    if "anthropic_api_key" in config:
-        available_providers.append("anthropic")
-    if "openrouter_api_key" in config:
-        available_providers.append("openrouter")
+    config = stored_config.copy()
+    config[key_name] = api_key
+    config["default_provider"] = provider
 
-    current_default = existing_config.get("default_provider")
-    if len(available_providers) > 1:
-        default_choice = current_default if current_default in available_providers else None
-        if not default_choice:
-            default_choice = "anthropic" if "anthropic" in available_providers else "openai"
-
-        print(f"Available providers: {', '.join(available_providers)}")
-        while True:
-            default_provider = prompt_with_default("Default provider", default=default_choice)
-            if default_provider in available_providers:
-                break
-            print(f"Please choose from: {', '.join(available_providers)}")
+    if api_key != existing_key:
+        print(f"  {provider_label} API key updated")
     else:
-        default_provider = available_providers[0]
-
-    config["default_provider"] = default_provider
+        print(f"  {provider_label} API key kept")
 
     print()
-    print("Configure default models (press Enter for provider defaults):")
-    print()
-
-    if "openai_api_key" in config:
-        openai_default = OpenAIProvider(api_key="").default_model
-        current_openai_model = existing_config.get("openai_model", openai_default)
-        openai_model = prompt_with_default("OpenAI model", default=current_openai_model)
-        if openai_model != openai_default:
-            config["openai_model"] = openai_model
-            print(f"  OpenAI model set to: {openai_model}")
-        else:
-            print(f"  Using default: {openai_default}")
-
-    if "anthropic_api_key" in config:
-        anthropic_default = AnthropicProvider(api_key="").default_model
-        current_anthropic_model = existing_config.get("anthropic_model", anthropic_default)
-        anthropic_model = prompt_with_default("Anthropic model", default=current_anthropic_model)
-        if anthropic_model != anthropic_default:
-            config["anthropic_model"] = anthropic_model
-            print(f"  Anthropic model set to: {anthropic_model}")
-        else:
-            print(f"  Using default: {anthropic_default}")
-
-    if "openrouter_api_key" in config:
-        openrouter_default = OpenRouterProvider(api_key="").default_model
-        current_openrouter_model = existing_config.get("openrouter_model", openrouter_default)
-        openrouter_model = prompt_with_default("OpenRouter model", default=current_openrouter_model)
-        if openrouter_model != openrouter_default:
-            config["openrouter_model"] = openrouter_model
-            print(f"  OpenRouter model set to: {openrouter_model}")
-        else:
-            print(f"  Using default: {openrouter_default}")
+    provider_default_model = PROVIDERS[provider](api_key="").default_model
+    model_name = f"{provider}_model"
+    current_model = existing_config.get(model_name, provider_default_model)
+    model = prompt_with_default(f"{provider_label} model", default=current_model)
+    if model != provider_default_model:
+        config[model_name] = model
+        print(f"  {provider_label} model set to: {model}")
+    else:
+        config.pop(model_name, None)
+        print(f"  Using default: {provider_default_model}")
 
     save_config(config)
 
     print()
     print(f"Configuration saved to: {get_config_path()}")
-    print(f"Default provider: {default_provider}")
+    print(f"Default provider: {provider}")
     print()
     print("You're ready to analyze papers!")
     print("  fluff-cutter analyze <paper.pdf>")
