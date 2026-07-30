@@ -60,14 +60,70 @@ class TestAnalyzePaper:
         assert "Actual analysis here" in result["analysis"]
 
     def test_handles_missing_title(self):
-        """Should use default title when not found in response."""
+        """Should use the filename when the response has no title."""
         mock_provider = MagicMock()
         mock_provider.analyze_paper.return_value = "Just some analysis without a title"
         mock_provider.get_model_info.return_value = "Model"
 
         result = analyze_paper(mock_provider, "base64", "paper.pdf")
 
-        assert result["title"] == "Unknown Title"
+        assert result["title"] == "Paper"
+
+    def test_uses_title_from_machine_metadata(self):
+        """Should recover the title when the model omits the visible TITLE line."""
+        mock_provider = MagicMock()
+        mock_provider.get_model_info.return_value = "Model"
+        response = """## Why Should I Care?
+It matters.
+
+<!-- paper-metadata
+{"title":"Kimi K3: Open Frontier Intelligence","authors":["Kimi Team"]}
+-->"""
+
+        result = parse_analysis_response(response, mock_provider, filename="k3_tech_report.pdf")
+
+        assert result["title"] == "Kimi K3: Open Frontier Intelligence"
+        assert result["metadata"] == {"authors": ["Kimi Team"]}
+        assert result["analysis"] == "## Why Should I Care?\nIt matters."
+
+    def test_rejects_placeholder_title_and_uses_metadata(self):
+        """A literal Unknown Title line should not override extracted metadata."""
+        mock_provider = MagicMock()
+        mock_provider.get_model_info.return_value = "Model"
+        response = """TITLE: Unknown Title
+
+Body
+<!-- paper-metadata
+{"title":"Actual Paper Title"}
+-->"""
+
+        result = parse_analysis_response(response, mock_provider, filename="paper.pdf")
+
+        assert result["title"] == "Actual Paper Title"
+        assert result["analysis"] == "Body"
+
+    def test_extracts_title_from_leading_markdown_h1(self):
+        """Should accept a common model formatting variation."""
+        mock_provider = MagicMock()
+        mock_provider.get_model_info.return_value = "Model"
+
+        result = parse_analysis_response("# Paper Title\n\n## Analysis\nBody", mock_provider)
+
+        assert result["title"] == "Paper Title"
+        assert result["analysis"] == "## Analysis\nBody"
+
+    def test_uses_readable_filename_as_last_resort(self):
+        """Should never emit Unknown Title when a useful filename is available."""
+        mock_provider = MagicMock()
+        mock_provider.get_model_info.return_value = "Model"
+
+        result = parse_analysis_response(
+            "Just some analysis without a title",
+            mock_provider,
+            filename="k3_tech_report.pdf",
+        )
+
+        assert result["title"] == "K3 Tech Report"
 
     def test_includes_model_info(self):
         """Should include model info in result."""

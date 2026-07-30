@@ -2,6 +2,7 @@
 
 import json
 import re
+from pathlib import Path
 from typing import Any, Iterator
 
 from .providers.base import BaseLLMProvider
@@ -56,6 +57,7 @@ End with exactly one HTML comment containing valid JSON in this shape:
 
 <!-- paper-metadata
 {
+  "title": "Paper Title",
   "authors": ["Author One", "Author Two"],
   "published_year": 2025,
   "research_type": "empirical",
@@ -66,6 +68,7 @@ End with exactly one HTML comment containing valid JSON in this shape:
 -->
 
 Metadata rules:
+- title: the paper's full title exactly as written in the paper
 - authors: the paper's authors in source order; use [] when unavailable
 - published_year: the paper's four-digit publication year, otherwise null
 - research_type: one of empirical, theoretical, survey, benchmark, systems, methods,
@@ -74,6 +77,37 @@ Metadata rules:
 - concepts: 3-8 concise noun phrases naming ideas actually explained by the paper
 - prerequisites: 0-5 concepts a reader should know first; use [] when none are evident
 - Do not wrap the JSON in a Markdown code fence or add text after the comment."""
+
+UNKNOWN_TITLES = {
+    "",
+    "n/a",
+    "not available",
+    "unknown",
+    "unknown title",
+    "untitled",
+}
+
+
+def _normalize_title(value: Any) -> str | None:
+    """Return a clean, non-placeholder paper title."""
+    if not isinstance(value, str):
+        return None
+    title = re.sub(r"\s+", " ", value).strip().strip("#*_` ")
+    if not title or len(title) > 300 or title.casefold() in UNKNOWN_TITLES:
+        return None
+    return title
+
+
+def _title_from_filename(filename: str | None) -> str | None:
+    """Turn a PDF filename into a readable last-resort title."""
+    if not filename:
+        return None
+    stem = Path(filename).stem
+    title = re.sub(r"[_-]+", " ", stem)
+    title = re.sub(r"\s+", " ", title).strip()
+    if not title:
+        return None
+    return title.title()
 
 
 def _normalize_text_list(value: Any, *, max_items: int) -> list[str]:
@@ -124,6 +158,10 @@ def extract_paper_metadata(response: str) -> tuple[str, dict[str, Any]]:
         return clean_response, {}
 
     metadata: dict[str, Any] = {}
+    title = _normalize_title(raw_metadata.get("title"))
+    if title:
+        metadata["title"] = title
+
     authors = _normalize_text_list(raw_metadata.get("authors"), max_items=20)
     if authors or raw_metadata.get("authors") == []:
         metadata["authors"] = authors
@@ -156,30 +194,50 @@ def extract_paper_metadata(response: str) -> tuple[str, dict[str, Any]]:
     return clean_response, metadata
 
 
-def parse_analysis_response(raw_response: str, provider: BaseLLMProvider) -> dict:
+def parse_analysis_response(
+    raw_response: str,
+    provider: BaseLLMProvider,
+    filename: str | None = None,
+) -> dict:
     """
     Parse a model response into title + analysis fields.
 
     Args:
         raw_response: Full response text from the model.
         provider: LLM provider that produced the response.
+        filename: Original PDF filename, used only as a last-resort title.
 
     Returns:
         Dictionary with 'title', 'analysis', 'metadata', and 'model_info' keys.
     """
     clean_response, metadata = extract_paper_metadata(raw_response)
+    metadata_title = metadata.pop("title", None)
 
-    # Try to extract the title from the response
-    title = "Unknown Title"
+    title = None
     analysis = clean_response
 
     lines = clean_response.strip().split("\n")
     for i, line in enumerate(lines):
         if line.strip().upper().startswith("TITLE:"):
-            title = line.split(":", 1)[1].strip()
-            # Remove the title line from the analysis
+            title = _normalize_title(line.split(":", 1)[1])
             analysis = "\n".join(lines[i + 1 :]).strip()
             break
+
+    if title is None:
+        title = _normalize_title(metadata_title)
+
+    if title is None:
+        for i, line in enumerate(lines):
+            h1_match = re.match(r"^\s*#[ \t]+(.+?)\s*$", line)
+            if not h1_match:
+                if line.strip():
+                    break
+                continue
+            title = _normalize_title(h1_match.group(1))
+            analysis = "\n".join(lines[i + 1 :]).strip()
+            break
+
+    title = title or _title_from_filename(filename) or "Unknown Title"
 
     return {
         "title": title,
@@ -203,7 +261,7 @@ def analyze_paper(provider: BaseLLMProvider, pdf_base64: str, filename: str) -> 
     """
     raw_response = provider.analyze_paper(pdf_base64, filename, ANALYSIS_PROMPT)
 
-    return parse_analysis_response(raw_response, provider)
+    return parse_analysis_response(raw_response, provider, filename=filename)
 
 
 def stream_analysis_chunks(

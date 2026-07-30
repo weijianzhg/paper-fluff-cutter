@@ -212,7 +212,7 @@ def analyze_source(
             raw_response += chunk
             print(chunk, end="", flush=True)
         print()
-        result = parse_analysis_response(raw_response, llm_provider)
+        result = parse_analysis_response(raw_response, llm_provider, filename=filename)
     except Exception as exc:
         error_msg = str(exc)
         if "too long" in error_msg.lower() and "token" in error_msg.lower() and not was_truncated:
@@ -229,7 +229,7 @@ def analyze_source(
                     raw_response += chunk
                     print(chunk, end="", flush=True)
                 print()
-                result = parse_analysis_response(raw_response, llm_provider)
+                result = parse_analysis_response(raw_response, llm_provider, filename=filename)
             except Exception as retry_error:
                 print(f"Error during analysis: {retry_error}", file=sys.stderr)
                 sys.exit(1)
