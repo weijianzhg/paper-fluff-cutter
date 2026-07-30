@@ -33,7 +33,7 @@ class TestDefaultAnalysisPath:
             datetime(2026, 7, 30),
         )
 
-        assert result.name == "理解-ai-safely-2026-07-30.md"
+        assert result.name == "理解-ai-safely-paper-2026-07-30.md"
 
     def test_uses_source_stem_to_disambiguate_same_title(self, tmp_path):
         created_at = datetime(2026, 7, 30)
@@ -44,6 +44,50 @@ class TestDefaultAnalysisPath:
         assert first.name == "same-title-first-2026-07-30.md"
         assert second.name == "same-title-second-2026-07-30.md"
 
+    def test_hashes_source_transformations_that_could_collide(self, tmp_path):
+        created_at = datetime(2026, 7, 30)
+
+        uppercase = default_analysis_path(tmp_path / "Foo.pdf", "Same Title", created_at)
+        lowercase = default_analysis_path(tmp_path / "foo.pdf", "Same Title", created_at)
+        underscored = default_analysis_path(
+            tmp_path / "downloaded_paper.pdf",
+            "Same Title",
+            created_at,
+        )
+        hyphenated = default_analysis_path(
+            tmp_path / "downloaded-paper.pdf",
+            "Same Title",
+            created_at,
+        )
+        generic = default_analysis_path(tmp_path / "paper.pdf", "Same Title", created_at)
+        title_named = default_analysis_path(
+            tmp_path / "same-title.pdf",
+            "Same Title",
+            created_at,
+        )
+
+        assert uppercase != lowercase
+        assert underscored != hyphenated
+        assert generic != underscored
+        assert generic != title_named
+
+    def test_hashes_source_stems_that_share_a_truncated_prefix(self, tmp_path):
+        created_at = datetime(2026, 7, 30)
+        shared_prefix = "a" * 60
+
+        first = default_analysis_path(
+            tmp_path / f"{shared_prefix}-first.pdf",
+            "Same Title",
+            created_at,
+        )
+        second = default_analysis_path(
+            tmp_path / f"{shared_prefix}-second.pdf",
+            "Same Title",
+            created_at,
+        )
+
+        assert first != second
+
     def test_limits_title_fragment_length(self, tmp_path):
         result = default_analysis_path(
             tmp_path / "paper.pdf",
@@ -51,7 +95,7 @@ class TestDefaultAnalysisPath:
             datetime(2026, 7, 30),
         )
 
-        title_fragment = result.name.removesuffix("-2026-07-30.md")
+        title_fragment = result.name.removesuffix("-paper-2026-07-30.md")
         assert len(title_fragment) == MAX_FILENAME_TITLE_LENGTH
 
     def test_limits_multibyte_filename_to_filesystem_safe_size(self, tmp_path):

@@ -1,5 +1,6 @@
 """Output formatting for paper analysis."""
 
+import hashlib
 import re
 import sys
 from datetime import datetime
@@ -33,6 +34,17 @@ def _truncate_utf8(text: str, max_bytes: int) -> str:
     return text.encode("utf-8")[:max_bytes].decode("utf-8", errors="ignore")
 
 
+def _source_identity(source_stem: str) -> str:
+    """Keep source names readable while hashing transformations that could collide."""
+    normalized = _source_slug(source_stem)
+    truncated = _truncate_utf8(normalized, MAX_FILENAME_SOURCE_BYTES).rstrip("-.")
+    identity = truncated or "source"
+    if identity != source_stem:
+        digest = hashlib.sha256(source_stem.encode("utf-8")).hexdigest()[:8]
+        identity = f"{identity}-{digest}"
+    return identity
+
+
 def default_analysis_path(
     pdf_path: str | Path,
     title: str,
@@ -42,15 +54,8 @@ def default_analysis_path(
     title_slug = _filename_slug(title)
     title_slug = title_slug[:MAX_FILENAME_TITLE_LENGTH].rstrip("-") or "paper"
     extraction_date = (created_at or datetime.now()).strftime("%Y-%m-%d")
-    source_slug = _truncate_utf8(
-        _source_slug(Path(pdf_path).stem),
-        MAX_FILENAME_SOURCE_BYTES,
-    ).rstrip("-.")
-    source_id = (
-        f"-{source_slug}"
-        if source_slug and source_slug not in {"paper", "downloaded-paper", title_slug}
-        else ""
-    )
+    source_identity = _source_identity(Path(pdf_path).stem)
+    source_id = f"-{source_identity}" if source_identity != title_slug else ""
     suffix = f"{source_id}-{extraction_date}.md"
     title_byte_budget = MAX_FILENAME_BYTES - len(suffix.encode("utf-8"))
     title_slug = _truncate_utf8(title_slug, title_byte_budget).rstrip("-") or "paper"
