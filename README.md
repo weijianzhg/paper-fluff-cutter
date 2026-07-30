@@ -27,8 +27,9 @@ Requires Python 3.10+.
 # Local file
 fluff-cutter analyze paper.pdf
 
-# URL (arxiv /abs/ links are auto-converted to PDF)
+# URL (arxiv /abs/ and GitHub /blob/ links are normalized automatically)
 fluff-cutter analyze https://arxiv.org/pdf/2411.19870
+fluff-cutter analyze https://github.com/MoonshotAI/Kimi-K3/blob/main/k3_tech_report.pdf
 
 # Options
 fluff-cutter analyze paper.pdf --output analysis.md   # custom output path
@@ -122,7 +123,11 @@ All providers support native PDF input -- no external dependencies like poppler 
 
 ## Configuration
 
-Run `fluff-cutter init` for interactive setup, or set environment variables directly:
+Run `fluff-cutter init` for interactive setup. It asks which provider to configure,
+then prompts only for that provider's API key and model. Run it again to configure
+another provider; existing provider settings are preserved.
+
+You can also set environment variables directly:
 
 ```bash
 export OPENAI_API_KEY=sk-your-key-here
