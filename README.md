@@ -77,7 +77,9 @@ research-wiki/
     └── log.md
 ```
 
-By default, results are printed to the terminal and saved as a `.md` file next to the input PDF.
+By default, results are printed to the terminal and saved next to the input PDF with a
+recognizable title, source identifier, and extraction date. Modern arXiv notes retain their
+numeric paper ID, for example `scaling-does-it-work-2411.19870-2026-07-30.md`.
 Model output streams live during analysis (provider-side streaming), so you see tokens immediately instead of waiting for full completion.
 
 ## Obsidian-ready notes

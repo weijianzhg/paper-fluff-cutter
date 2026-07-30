@@ -1,8 +1,136 @@
 """Tests for output formatting."""
 
+from datetime import datetime
+
 import yaml
 
-from fluff_cutter.output import format_analysis, print_analysis_stream, save_analysis
+from fluff_cutter.output import (
+    MAX_FILENAME_BYTES,
+    MAX_FILENAME_TITLE_LENGTH,
+    default_analysis_path,
+    format_analysis,
+    print_analysis_stream,
+    save_analysis,
+)
+
+
+class TestDefaultAnalysisPath:
+    """Tests for recognizable default output filenames."""
+
+    def test_uses_title_and_extraction_date_next_to_pdf(self, tmp_path):
+        result = default_analysis_path(
+            tmp_path / "2411.19870.pdf",
+            "Scaling: Does It Work?",
+            datetime(2026, 7, 30),
+        )
+
+        assert result == tmp_path / "scaling-does-it-work-2411.19870-2026-07-30.md"
+
+    def test_preserves_unicode_and_removes_unsafe_punctuation(self, tmp_path):
+        result = default_analysis_path(
+            tmp_path / "paper.pdf",
+            "理解 AI / safely?",
+            datetime(2026, 7, 30),
+        )
+
+        assert result.name == "理解-ai-safely-paper-2026-07-30.md"
+
+    def test_uses_source_stem_to_disambiguate_same_title(self, tmp_path):
+        created_at = datetime(2026, 7, 30)
+
+        first = default_analysis_path(tmp_path / "first.pdf", "Same Title", created_at)
+        second = default_analysis_path(tmp_path / "second.pdf", "Same Title", created_at)
+
+        assert first.name == "same-title-first-2026-07-30.md"
+        assert second.name == "same-title-second-2026-07-30.md"
+
+    def test_hashes_source_transformations_that_could_collide(self, tmp_path):
+        created_at = datetime(2026, 7, 30)
+
+        uppercase = default_analysis_path(tmp_path / "Foo.pdf", "Same Title", created_at)
+        lowercase = default_analysis_path(tmp_path / "foo.pdf", "Same Title", created_at)
+        underscored = default_analysis_path(
+            tmp_path / "downloaded_paper.pdf",
+            "Same Title",
+            created_at,
+        )
+        hyphenated = default_analysis_path(
+            tmp_path / "downloaded-paper.pdf",
+            "Same Title",
+            created_at,
+        )
+        generic = default_analysis_path(tmp_path / "paper.pdf", "Same Title", created_at)
+        title_named = default_analysis_path(
+            tmp_path / "same-title.pdf",
+            "Same Title",
+            created_at,
+        )
+
+        assert uppercase != lowercase
+        assert underscored != hyphenated
+        assert generic != underscored
+        assert generic != title_named
+
+    def test_digest_namespace_cannot_collide_with_literal_source_stem(self, tmp_path):
+        created_at = datetime(2026, 7, 30)
+        transformed = default_analysis_path(tmp_path / "Foo.pdf", "Same Title", created_at)
+        generated_identity = transformed.stem.removeprefix("same-title-").removesuffix(
+            "-2026-07-30"
+        )
+
+        literal = default_analysis_path(
+            tmp_path / f"{generated_identity}.pdf",
+            "Same Title",
+            created_at,
+        )
+
+        assert transformed != literal
+
+    def test_hashes_source_stems_that_share_a_truncated_prefix(self, tmp_path):
+        created_at = datetime(2026, 7, 30)
+        shared_prefix = "a" * 60
+
+        first = default_analysis_path(
+            tmp_path / f"{shared_prefix}-first.pdf",
+            "Same Title",
+            created_at,
+        )
+        second = default_analysis_path(
+            tmp_path / f"{shared_prefix}-second.pdf",
+            "Same Title",
+            created_at,
+        )
+
+        assert first != second
+
+    def test_limits_title_fragment_length(self, tmp_path):
+        result = default_analysis_path(
+            tmp_path / "paper.pdf",
+            "A" * 200,
+            datetime(2026, 7, 30),
+        )
+
+        title_fragment = result.name.removesuffix("-paper-2026-07-30.md")
+        assert len(title_fragment) == MAX_FILENAME_TITLE_LENGTH
+
+    def test_limits_multibyte_filename_to_filesystem_safe_size(self, tmp_path):
+        result = default_analysis_path(
+            tmp_path / "2411.19870.pdf",
+            "𝒜" * 80,
+            datetime(2026, 7, 30),
+        )
+
+        assert len(result.name.encode("utf-8")) <= MAX_FILENAME_BYTES
+        assert result.name.endswith("-2411.19870-2026-07-30.md")
+
+    def test_uses_paper_fallback_when_title_has_no_filename_characters(self, tmp_path):
+        result = default_analysis_path(
+            tmp_path / "paper.pdf",
+            "?! /",
+            datetime(2026, 7, 30),
+        )
+
+        assert result.name == "paper-2026-07-30.md"
 
 
 class TestFormatAnalysis:
