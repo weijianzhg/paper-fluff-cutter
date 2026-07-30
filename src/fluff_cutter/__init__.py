@@ -1,3 +1,3 @@
 """Paper Fluff Cutter - Extract the core value from academic papers."""
 
-__version__ = "0.5.2"
+__version__ = "0.6.0"
