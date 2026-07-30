@@ -1,5 +1,6 @@
 """Download PDF papers from URLs."""
 
+import hashlib
 import re
 from pathlib import Path
 from urllib.parse import urlparse
@@ -44,6 +45,33 @@ def normalize_arxiv_url(url: str) -> str:
     return parsed._replace(path=path).geturl()
 
 
+def normalize_github_url(url: str) -> str:
+    """
+    Normalize a GitHub file-view URL to download the raw file.
+
+    Converts paths such as /owner/repo/blob/main/paper.pdf to
+    /owner/repo/raw/main/paper.pdf. GitHub resolves the ref and redirects
+    to the raw file, including when the ref contains slashes.
+
+    Args:
+        url: A GitHub URL.
+
+    Returns:
+        The normalized raw-file URL.
+    """
+    parsed = urlparse(url)
+    if (parsed.hostname or "").lower() not in {"github.com", "www.github.com"}:
+        return url
+
+    path = re.sub(r"^(/[^/]+/[^/]+)/blob/", r"\1/raw/", parsed.path, count=1)
+    return parsed._replace(path=path).geturl()
+
+
+def normalize_pdf_url(url: str) -> str:
+    """Normalize supported paper URLs to direct PDF download URLs."""
+    return normalize_github_url(normalize_arxiv_url(url))
+
+
 def _filename_from_url(url: str) -> str:
     """
     Derive a PDF filename from a URL.
@@ -74,7 +102,8 @@ def download_pdf(url: str, output_dir: Path | None = None) -> Path:
     """
     Download a PDF from a URL and save it locally.
 
-    If the file already exists locally, the download is skipped.
+    If a different PDF already uses the same basename, the URL gets a stable
+    suffix so the existing paper is not silently reused or overwritten.
 
     Args:
         url: The URL to download from.
@@ -87,16 +116,11 @@ def download_pdf(url: str, output_dir: Path | None = None) -> Path:
         RuntimeError: If the download fails or the response is not a PDF.
         httpx.HTTPStatusError: If the server returns an error status code.
     """
-    # Normalize arxiv URLs
-    url = normalize_arxiv_url(url)
+    url = normalize_pdf_url(url)
 
     filename = _filename_from_url(url)
     output_dir = output_dir or Path.cwd()
     output_path = output_dir / filename
-
-    # Skip download if file already exists
-    if output_path.exists():
-        return output_path
 
     # Download the PDF
     with httpx.Client(follow_redirects=True, timeout=60.0) as client:
@@ -114,7 +138,16 @@ def download_pdf(url: str, output_dir: Path | None = None) -> Path:
                 "Please provide a direct link to a PDF file."
             )
 
-        # Write to disk
+        if output_path.exists():
+            if output_path.read_bytes() == response.content:
+                return output_path
+            url_hash = hashlib.sha256(url.encode("utf-8")).hexdigest()[:10]
+            output_path = output_path.with_name(
+                f"{output_path.stem}-{url_hash}{output_path.suffix}"
+            )
+            if output_path.exists() and output_path.read_bytes() == response.content:
+                return output_path
+
         output_path.write_bytes(response.content)
 
     return output_path

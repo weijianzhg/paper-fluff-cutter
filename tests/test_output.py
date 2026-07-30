@@ -1,5 +1,7 @@
 """Tests for output formatting."""
 
+import yaml
+
 from fluff_cutter.output import format_analysis, print_analysis_stream, save_analysis
 
 
@@ -14,7 +16,7 @@ class TestFormatAnalysis:
             model_info="TestModel",
         )
 
-        assert "# Paper Analysis: Test Paper Title" in result
+        assert "# Test Paper Title" in result
 
     def test_includes_analysis_content(self):
         """Should include the analysis content."""
@@ -36,7 +38,7 @@ class TestFormatAnalysis:
             model_info="Anthropic (claude-opus-4-5)",
         )
 
-        assert "Anthropic (claude-opus-4-5)" in result
+        assert "model: Anthropic (claude-opus-4-5)" in result
 
     def test_includes_date_format(self):
         """Should include a date in YYYY-MM-DD format."""
@@ -50,6 +52,42 @@ class TestFormatAnalysis:
         import re
 
         assert re.search(r"\d{4}-\d{2}-\d{2}", result) is not None
+
+    def test_renders_obsidian_properties_and_normalized_body(self):
+        """Should render searchable properties and one H1 without machine metadata."""
+        result = format_analysis(
+            title="Scaling: Does It Work?",
+            analysis="# Duplicate Title\n\n## Why Should I Care?\nBecause.",
+            model_info="OpenAI (gpt-5.2)",
+            paper_metadata={
+                "authors": ["A. Researcher"],
+                "published_year": 2026,
+                "research_type": "empirical",
+                "topics": ["language-models", "evaluation"],
+                "concepts": ["scaling laws"],
+                "prerequisites": [],
+            },
+            source="https://arxiv.org/abs/1234.5678",
+        )
+
+        _, frontmatter, body = result.split("---", 2)
+        metadata = yaml.safe_load(frontmatter)
+        assert metadata == {
+            "title": "Scaling: Does It Work?",
+            "source": "https://arxiv.org/abs/1234.5678",
+            "created": metadata["created"],
+            "content_type": "research-paper",
+            "authors": ["A. Researcher"],
+            "published_year": 2026,
+            "research_type": "empirical",
+            "concepts": ["scaling laws"],
+            "prerequisites": [],
+            "tags": ["paper", "summary", "language-models", "evaluation"],
+            "model": "OpenAI (gpt-5.2)",
+        }
+        assert body.count("# Scaling: Does It Work?") == 1
+        assert "Duplicate Title" not in body
+        assert "## Why Should I Care?" in body
 
 
 class TestSaveAnalysis:
@@ -83,7 +121,8 @@ class TestSaveAnalysis:
         )
 
         content = output_path.read_text()
-        assert content.startswith("# ")  # Markdown heading
+        assert content.startswith("---\n")
+        assert "\n# Paper Title\n" in content
 
 
 class TestPrintAnalysisStream:
@@ -98,9 +137,9 @@ class TestPrintAnalysisStream:
         )
 
         captured = capsys.readouterr()
-        assert "# Paper Analysis: Streamed Title" in captured.out
+        assert "# Streamed Title" in captured.out
         assert "Streamed analysis body" in captured.out
-        assert "Analyzed with StreamModel" in captured.out
+        assert "model: StreamModel" in captured.out
 
     def test_writes_multiple_chunks(self, monkeypatch):
         """Should write progressively rather than in one large print call."""

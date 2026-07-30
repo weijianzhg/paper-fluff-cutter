@@ -27,8 +27,9 @@ Requires Python 3.10+.
 # Local file
 fluff-cutter analyze paper.pdf
 
-# URL (arxiv /abs/ links are auto-converted to PDF)
+# URL (arxiv /abs/ and GitHub /blob/ links are normalized automatically)
 fluff-cutter analyze https://arxiv.org/pdf/2411.19870
+fluff-cutter analyze https://github.com/MoonshotAI/Kimi-K3/blob/main/k3_tech_report.pdf
 
 # Options
 fluff-cutter analyze paper.pdf --output analysis.md   # custom output path
@@ -79,6 +80,37 @@ research-wiki/
 By default, results are printed to the terminal and saved as a `.md` file next to the input PDF.
 Model output streams live during analysis (provider-side streaming), so you see tokens immediately instead of waiting for full completion.
 
+## Obsidian-ready notes
+
+Saved analyses and wiki paper pages include YAML properties that Obsidian can index:
+
+```yaml
+---
+title: Scaling Test-Time Compute
+source: https://arxiv.org/abs/2411.19870
+created: 2026-07-30
+content_type: research-paper
+authors:
+  - Example Author
+published_year: 2025
+research_type: empirical
+concepts:
+  - verifier-guided search
+prerequisites:
+  - transformer architecture
+tags:
+  - paper
+  - summary
+  - language-models
+  - reasoning
+model: OpenAI (gpt-5.2)
+---
+```
+
+The visible note uses one paper-title H1 followed by consistent H2 analysis sections.
+Model-generated metadata is validated and removed from the note body, so files can be
+dropped directly into an Obsidian vault and organized with Properties, tags, and search.
+
 ## Supported Providers
 
 | Provider | Default Model | Env Variable |
@@ -91,7 +123,11 @@ All providers support native PDF input -- no external dependencies like poppler 
 
 ## Configuration
 
-Run `fluff-cutter init` for interactive setup, or set environment variables directly:
+Run `fluff-cutter init` for interactive setup. It asks which provider to configure,
+then prompts only for that provider's API key and model. Run it again to configure
+another provider; existing provider settings are preserved.
+
+You can also set environment variables directly:
 
 ```bash
 export OPENAI_API_KEY=sk-your-key-here

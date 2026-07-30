@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-07-30
+
+### Added
+
+- Added Obsidian-compatible YAML properties to standalone analyses and wiki paper pages
+- Added validated paper metadata for authors, publication year, research type, concepts,
+  prerequisites, and normalized topical tags
+- Added direct support for GitHub `/blob/` PDF links
+
+### Changed
+
+- Saved notes now use one paper-title H1 and consistent H2 analysis sections
+- Hidden model metadata is removed before Markdown files are saved
+- `fluff-cutter init` now configures one selected provider at a time while preserving
+  settings for other providers
+
+### Fixed
+
+- Missing or placeholder paper titles now fall back to validated metadata, a leading H1,
+  and then a readable PDF filename
+- URL downloads with the same filename no longer silently reuse a different paper
+- Environment-only API keys are no longer copied into the config file during setup
+- Hidden metadata is suppressed from terminal output, and wiki notes no longer duplicate
+  a model-generated H1
+
 ## [0.5.2] - 2026-04-21
 
 ### Added
