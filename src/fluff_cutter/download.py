@@ -1,5 +1,6 @@
 """Download PDF papers from URLs."""
 
+import hashlib
 import re
 from pathlib import Path
 from urllib.parse import urlparse
@@ -101,7 +102,8 @@ def download_pdf(url: str, output_dir: Path | None = None) -> Path:
     """
     Download a PDF from a URL and save it locally.
 
-    If the file already exists locally, the download is skipped.
+    If a different PDF already uses the same basename, the URL gets a stable
+    suffix so the existing paper is not silently reused or overwritten.
 
     Args:
         url: The URL to download from.
@@ -120,10 +122,6 @@ def download_pdf(url: str, output_dir: Path | None = None) -> Path:
     output_dir = output_dir or Path.cwd()
     output_path = output_dir / filename
 
-    # Skip download if file already exists
-    if output_path.exists():
-        return output_path
-
     # Download the PDF
     with httpx.Client(follow_redirects=True, timeout=60.0) as client:
         response = client.get(url)
@@ -140,7 +138,16 @@ def download_pdf(url: str, output_dir: Path | None = None) -> Path:
                 "Please provide a direct link to a PDF file."
             )
 
-        # Write to disk
+        if output_path.exists():
+            if output_path.read_bytes() == response.content:
+                return output_path
+            url_hash = hashlib.sha256(url.encode("utf-8")).hexdigest()[:10]
+            output_path = output_path.with_name(
+                f"{output_path.stem}-{url_hash}{output_path.suffix}"
+            )
+            if output_path.exists() and output_path.read_bytes() == response.content:
+                return output_path
+
         output_path.write_bytes(response.content)
 
     return output_path

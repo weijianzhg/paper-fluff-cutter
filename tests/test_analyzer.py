@@ -112,6 +112,34 @@ Body
         assert result["title"] == "Paper Title"
         assert result["analysis"] == "## Analysis\nBody"
 
+    def test_uses_h1_after_rejected_placeholder_title(self):
+        """A rejected TITLE marker should not block a valid following H1."""
+        mock_provider = MagicMock()
+        mock_provider.get_model_info.return_value = "Model"
+
+        result = parse_analysis_response(
+            "TITLE: Unknown Title\n\n# Actual Paper Title\n\n## Analysis\nBody",
+            mock_provider,
+            filename="paper.pdf",
+        )
+
+        assert result["title"] == "Actual Paper Title"
+        assert result["analysis"] == "## Analysis\nBody"
+
+    def test_does_not_treat_generic_h1_as_paper_title(self):
+        """A generic response heading should not replace the filename fallback."""
+        mock_provider = MagicMock()
+        mock_provider.get_model_info.return_value = "Model"
+
+        result = parse_analysis_response(
+            "# Analysis\n\n## Why Should I Care?\nBody",
+            mock_provider,
+            filename="actual-paper.pdf",
+        )
+
+        assert result["title"] == "Actual Paper"
+        assert result["analysis"] == "# Analysis\n\n## Why Should I Care?\nBody"
+
     def test_uses_readable_filename_as_last_resort(self):
         """Should never emit Unknown Title when a useful filename is available."""
         mock_provider = MagicMock()

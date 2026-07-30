@@ -53,6 +53,8 @@ PROVIDER_LABELS = {
     "openrouter": "OpenRouter",
 }
 
+PAPER_METADATA_START = "<!-- paper-metadata"
+
 
 def _mask_key(key: str) -> str:
     """Mask an API key for display, showing only first 4 and last 4 chars."""
@@ -83,7 +85,7 @@ def cmd_init(args):
     stored_config = load_config_file()
     existing_config = load_config()
     provider_names = list(PROVIDERS)
-    current_default = existing_config.get("default_provider")
+    current_default = stored_config.get("default_provider")
     default_provider = current_default if current_default in PROVIDERS else "anthropic"
 
     print(f"Providers: {', '.join(provider_names)}")
@@ -96,13 +98,15 @@ def cmd_init(args):
 
     provider_label = PROVIDER_LABELS[provider]
     key_name = f"{provider}_api_key"
-    existing_key = existing_config.get(key_name)
+    stored_key = stored_config.get(key_name)
+    effective_key = existing_config.get(key_name)
     api_key = prompt_with_default(
         f"{provider_label} API Key",
-        default=existing_key or "",
+        default=stored_key or "",
         password=True,
     )
-    if not api_key:
+    using_environment_key = not api_key and bool(effective_key)
+    if not api_key and not using_environment_key:
         print()
         env_name = f"{provider.upper()}_API_KEY"
         print(f"No {provider_label} API key provided. Configuration not saved.")
@@ -110,10 +114,13 @@ def cmd_init(args):
         return
 
     config = stored_config.copy()
-    config[key_name] = api_key
+    if api_key:
+        config[key_name] = api_key
     config["default_provider"] = provider
 
-    if api_key != existing_key:
+    if using_environment_key:
+        print(f"  Using {provider_label} API key from the environment (not saved)")
+    elif api_key != stored_key:
         print(f"  {provider_label} API key updated")
     else:
         print(f"  {provider_label} API key kept")
@@ -121,7 +128,7 @@ def cmd_init(args):
     print()
     provider_default_model = PROVIDERS[provider](api_key="").default_model
     model_name = f"{provider}_model"
-    current_model = existing_config.get(model_name, provider_default_model)
+    current_model = stored_config.get(model_name, provider_default_model)
     model = prompt_with_default(f"{provider_label} model", default=current_model)
     if model != provider_default_model:
         config[model_name] = model
@@ -176,6 +183,38 @@ def _resolve_local_paper_path(paper_path: str, download_dir: Path | None = None)
     return paper_path
 
 
+def _stream_provider_response(llm_provider, pdf_base64: str, filename: str) -> str:
+    """Stream user-facing analysis while retaining hidden metadata for parsing."""
+    raw_chunks = []
+    pending = ""
+    hiding_metadata = False
+
+    for chunk in stream_analysis_chunks(llm_provider, pdf_base64, filename):
+        raw_chunks.append(chunk)
+        if hiding_metadata:
+            continue
+
+        pending += chunk
+        marker_index = pending.casefold().find(PAPER_METADATA_START)
+        if marker_index >= 0:
+            print(pending[:marker_index], end="", flush=True)
+            pending = ""
+            hiding_metadata = True
+            continue
+
+        keep_length = len(PAPER_METADATA_START) - 1
+        visible_length = max(0, len(pending) - keep_length)
+        if visible_length:
+            print(pending[:visible_length], end="", flush=True)
+            pending = pending[visible_length:]
+
+    if not hiding_metadata:
+        print(pending, end="", flush=True)
+
+    print()
+    return "".join(raw_chunks)
+
+
 def analyze_source(
     paper_path: str,
     provider: str | None = None,
@@ -207,11 +246,7 @@ def analyze_source(
 
     print("Analyzing paper (streaming output)...")
     try:
-        raw_response = ""
-        for chunk in stream_analysis_chunks(llm_provider, pdf_base64, filename):
-            raw_response += chunk
-            print(chunk, end="", flush=True)
-        print()
+        raw_response = _stream_provider_response(llm_provider, pdf_base64, filename)
         result = parse_analysis_response(raw_response, llm_provider, filename=filename)
     except Exception as exc:
         error_msg = str(exc)
@@ -224,11 +259,7 @@ def analyze_source(
             try:
                 pdf_base64, total_pages, _ = read_pdf_as_base64(local_paper_path, DEFAULT_MAX_PAGES)
                 print(f"  Retrying with first {DEFAULT_MAX_PAGES} of {total_pages} pages...")
-                raw_response = ""
-                for chunk in stream_analysis_chunks(llm_provider, pdf_base64, filename):
-                    raw_response += chunk
-                    print(chunk, end="", flush=True)
-                print()
+                raw_response = _stream_provider_response(llm_provider, pdf_base64, filename)
                 result = parse_analysis_response(raw_response, llm_provider, filename=filename)
             except Exception as retry_error:
                 print(f"Error during analysis: {retry_error}", file=sys.stderr)

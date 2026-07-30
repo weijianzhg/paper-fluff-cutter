@@ -11,6 +11,8 @@ from typing import Any
 
 import yaml
 
+from .output import build_paper_properties, strip_leading_h1
+
 CONFIG_FILENAME = "fluff-cutter.yaml"
 RAW_PDFS_DIR = Path("raw") / "pdfs"
 WIKI_DIR = Path("wiki")
@@ -112,13 +114,21 @@ def _body_summary(body: str) -> str:
     return ""
 
 
-def _unique_slug(paths: WikiPaths, title: str) -> str:
+def _unique_slug(
+    paths: WikiPaths,
+    title: str,
+    *,
+    source_pdf: Path | None = None,
+) -> str:
     base = slugify(title)
     candidate = base
     counter = 2
-    while (paths.papers / f"{candidate}.md").exists() or (
-        paths.raw_pdfs / f"{candidate}.pdf"
-    ).exists():
+    source_pdf = source_pdf.resolve() if source_pdf else None
+    while True:
+        candidate_pdf = paths.raw_pdfs / f"{candidate}.pdf"
+        pdf_conflict = candidate_pdf.exists() and candidate_pdf.resolve() != source_pdf
+        if not (paths.papers / f"{candidate}.md").exists() and not pdf_conflict:
+            break
         candidate = f"{base}-{counter}"
         counter += 1
     return candidate
@@ -231,7 +241,8 @@ def add_paper_to_wiki(
 ) -> Path:
     paths = _paths(root)
     pdf_path = Path(pdf_path).expanduser().resolve()
-    slug = _unique_slug(paths, title)
+    source_pdf = pdf_path if pdf_path.parent == paths.raw_pdfs else None
+    slug = _unique_slug(paths, title, source_pdf=source_pdf)
     target_pdf = paths.raw_pdfs / f"{slug}.pdf"
     if pdf_path == target_pdf:
         pass
@@ -241,22 +252,22 @@ def add_paper_to_wiki(
         shutil.copy2(pdf_path, target_pdf)
 
     page_path = paths.papers / f"{slug}.md"
-    extracted = paper_metadata or {}
     metadata: dict[str, Any] = {
         "title": title,
         "slug": slug,
         "source": source_ref,
         "pdf_path": target_pdf.relative_to(paths.root).as_posix(),
         "added": today_str(),
-        "content_type": "research-paper",
-        "model": model_info,
     }
-    for field in ("authors", "published_year", "research_type", "concepts", "prerequisites"):
-        if field in extracted:
-            metadata[field] = extracted[field]
-    metadata["tags"] = ["paper", "summary", *extracted.get("topics", [])]
+    metadata.update(
+        build_paper_properties(
+            model_info=model_info,
+            paper_metadata=paper_metadata,
+        )
+    )
     frontmatter = yaml.safe_dump(metadata, sort_keys=False).strip()
-    body = f"---\n{frontmatter}\n---\n\n# {title}\n\n{analysis.strip()}\n"
+    clean_analysis = strip_leading_h1(analysis)
+    body = f"---\n{frontmatter}\n---\n\n# {title}\n\n{clean_analysis}\n"
     _write_text(page_path, body)
     rebuild_wiki(paths.root)
     _append_log(paths.root, "ingest", title, f"source: {source_ref}")

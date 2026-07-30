@@ -86,6 +86,15 @@ UNKNOWN_TITLES = {
     "unknown title",
     "untitled",
 }
+NON_TITLE_HEADINGS = {
+    "analysis",
+    "paper analysis",
+    "paper summary",
+    "summary",
+    "why should i care?",
+    "what's the actual innovation?",
+    "is the evidence convincing?",
+}
 
 
 def _normalize_title(value: Any) -> str | None:
@@ -227,14 +236,17 @@ def parse_analysis_response(
         title = _normalize_title(metadata_title)
 
     if title is None:
-        for i, line in enumerate(lines):
+        fallback_lines = analysis.strip().split("\n")
+        for i, line in enumerate(fallback_lines):
             h1_match = re.match(r"^\s*#[ \t]+(.+?)\s*$", line)
             if not h1_match:
                 if line.strip():
                     break
                 continue
-            title = _normalize_title(h1_match.group(1))
-            analysis = "\n".join(lines[i + 1 :]).strip()
+            candidate = _normalize_title(h1_match.group(1))
+            if candidate and candidate.casefold() not in NON_TITLE_HEADINGS:
+                title = candidate
+                analysis = "\n".join(fallback_lines[i + 1 :]).strip()
             break
 
     title = title or _title_from_filename(filename) or "Unknown Title"

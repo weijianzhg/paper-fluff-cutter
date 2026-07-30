@@ -123,6 +123,26 @@ def test_add_paper_to_wiki_renames_existing_raw_pdf_without_orphaning(initialize
     assert doctor_wiki(initialized_wiki)["ok"] is True
 
 
+def test_add_paper_to_wiki_reuses_source_pdf_slug_and_strips_duplicate_h1(initialized_wiki):
+    downloaded_pdf = initialized_wiki / "raw" / "pdfs" / "paper.pdf"
+    downloaded_pdf.write_bytes(b"%PDF-1.4 fake")
+
+    page_path = add_paper_to_wiki(
+        initialized_wiki,
+        source_ref="https://example.com/paper.pdf",
+        pdf_path=downloaded_pdf,
+        title="Paper",
+        analysis="# Duplicate Title\n\n## Why Should I Care?\nUseful.",
+        model_info="OpenAI (gpt-5.2)",
+    )
+
+    assert page_path.name == "paper.md"
+    assert (initialized_wiki / "raw" / "pdfs" / "paper.pdf").exists()
+    body = page_path.read_text(encoding="utf-8")
+    assert body.count("# Paper") == 1
+    assert "Duplicate Title" not in body
+
+
 def test_rebuild_wiki_regenerates_index_from_existing_pages(initialized_wiki):
     papers_dir = initialized_wiki / "wiki" / "papers"
     papers_dir.mkdir(parents=True, exist_ok=True)

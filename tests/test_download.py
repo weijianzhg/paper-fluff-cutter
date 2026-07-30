@@ -161,14 +161,48 @@ class TestDownloadPdf:
         assert result.exists()
         assert result.read_bytes() == pdf_bytes
 
-    def test_skips_download_if_file_exists(self, tmp_path):
-        """Should skip download if file already exists."""
+    def test_does_not_reuse_different_pdf_with_same_basename(self, tmp_path):
+        """Different URLs with the same basename should not reuse the wrong PDF."""
         existing = tmp_path / "2411.19870.pdf"
         existing.write_bytes(b"%PDF-1.4 existing")
+        replacement = b"%PDF-1.4 different"
+        mock_response = MagicMock()
+        mock_response.content = replacement
+        mock_response.headers = {"content-type": "application/pdf"}
+        mock_response.raise_for_status = MagicMock()
 
         with patch("fluff_cutter.download.httpx.Client") as mock_client_cls:
+            mock_client = MagicMock()
+            mock_client.__enter__ = MagicMock(return_value=mock_client)
+            mock_client.__exit__ = MagicMock(return_value=False)
+            mock_client.get.return_value = mock_response
+            mock_client_cls.return_value = mock_client
+
             result = download_pdf("https://arxiv.org/pdf/2411.19870", output_dir=tmp_path)
-            mock_client_cls.assert_not_called()
+
+        assert result != existing
+        assert existing.read_bytes() == b"%PDF-1.4 existing"
+        assert result.name.startswith("2411.19870-")
+        assert result.read_bytes() == replacement
+
+    def test_reuses_existing_path_when_downloaded_content_matches(self, tmp_path):
+        """An identical download should keep the readable existing filename."""
+        pdf_bytes = self._make_pdf_bytes()
+        existing = tmp_path / "paper.pdf"
+        existing.write_bytes(pdf_bytes)
+        mock_response = MagicMock()
+        mock_response.content = pdf_bytes
+        mock_response.headers = {"content-type": "application/pdf"}
+        mock_response.raise_for_status = MagicMock()
+
+        with patch("fluff_cutter.download.httpx.Client") as mock_client_cls:
+            mock_client = MagicMock()
+            mock_client.__enter__ = MagicMock(return_value=mock_client)
+            mock_client.__exit__ = MagicMock(return_value=False)
+            mock_client.get.return_value = mock_response
+            mock_client_cls.return_value = mock_client
+
+            result = download_pdf("https://example.com/paper.pdf", output_dir=tmp_path)
 
         assert result == existing
 

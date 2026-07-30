@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+
 import yaml
 
 import fluff_cutter.config as config_module
@@ -76,3 +78,38 @@ def test_init_configures_one_new_provider(tmp_path, monkeypatch):
         "openrouter_api_key": "sk-new-openrouter",
         "default_provider": "openrouter",
     }
+
+
+def test_init_retries_invalid_provider(tmp_path, monkeypatch, capsys):
+    config_file = _mock_user_config(tmp_path, monkeypatch)
+    answers = iter(["invalid", "openai", ""])
+
+    monkeypatch.setattr("builtins.input", lambda _prompt: next(answers))
+    monkeypatch.setattr(cli.getpass, "getpass", lambda _prompt: "sk-openai")
+    monkeypatch.setattr(cli.sys, "argv", ["fluff-cutter", "init"])
+
+    cli.main()
+
+    assert "Please choose from: openai, anthropic, openrouter" in capsys.readouterr().out
+    assert yaml.safe_load(config_file.read_text(encoding="utf-8")) == {
+        "openai_api_key": "sk-openai",
+        "default_provider": "openai",
+    }
+
+
+def test_init_does_not_persist_environment_key(tmp_path, monkeypatch, capsys):
+    config_file = _mock_user_config(tmp_path, monkeypatch)
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-from-environment")
+    answers = iter(["openai", ""])
+
+    monkeypatch.setattr("builtins.input", lambda _prompt: next(answers))
+    monkeypatch.setattr(cli.getpass, "getpass", lambda prompt: "" if "API Key" in prompt else "")
+    monkeypatch.setattr(cli.sys, "argv", ["fluff-cutter", "init"])
+
+    cli.main()
+
+    saved = yaml.safe_load(config_file.read_text(encoding="utf-8"))
+    assert saved == {"default_provider": "openai"}
+    assert "sk-from-environment" not in config_file.read_text(encoding="utf-8")
+    assert "from the environment (not saved)" in capsys.readouterr().out
+    assert os.environ["OPENAI_API_KEY"] == "sk-from-environment"
