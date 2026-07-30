@@ -3,14 +3,30 @@
 import re
 import sys
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 import yaml
+
+MAX_FILENAME_TITLE_LENGTH = 80
 
 
 def strip_leading_h1(analysis: str) -> str:
     """Remove a model-generated H1 because the note supplies its own title."""
     return re.sub(r"\A\s*#[ \t]+[^\n]*(?:\n+|$)", "", analysis, count=1).strip()
+
+
+def default_analysis_path(
+    pdf_path: str | Path,
+    title: str,
+    created_at: datetime | None = None,
+) -> Path:
+    """Build a recognizable default filename from the paper title and extraction date."""
+    title_slug = re.sub(r"[^\w]+", "-", title.casefold(), flags=re.UNICODE)
+    title_slug = title_slug.replace("_", "-").strip("-")
+    title_slug = title_slug[:MAX_FILENAME_TITLE_LENGTH].rstrip("-") or "paper"
+    extraction_date = (created_at or datetime.now()).strftime("%Y-%m-%d")
+    return Path(pdf_path).with_name(f"{title_slug}-{extraction_date}.md")
 
 
 def build_paper_properties(
@@ -124,6 +140,7 @@ def save_analysis(
     output_path: str,
     paper_metadata: dict[str, Any] | None = None,
     source: str | None = None,
+    created_at: datetime | None = None,
 ) -> None:
     """
     Save the formatted analysis to a file.
@@ -135,6 +152,7 @@ def save_analysis(
         output_path: Path to save the output file.
         paper_metadata: Validated metadata extracted from the model response.
         source: Original paper path or URL.
+        created_at: Optional timestamp shared with the generated filename.
     """
     content = format_analysis(
         title,
@@ -142,6 +160,7 @@ def save_analysis(
         model_info,
         paper_metadata=paper_metadata,
         source=source,
+        created_at=created_at,
     )
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(content)

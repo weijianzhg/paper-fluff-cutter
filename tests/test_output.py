@@ -1,8 +1,48 @@
 """Tests for output formatting."""
 
+from datetime import datetime
+
 import yaml
 
-from fluff_cutter.output import format_analysis, print_analysis_stream, save_analysis
+from fluff_cutter.output import (
+    MAX_FILENAME_TITLE_LENGTH,
+    default_analysis_path,
+    format_analysis,
+    print_analysis_stream,
+    save_analysis,
+)
+
+
+class TestDefaultAnalysisPath:
+    """Tests for recognizable default output filenames."""
+
+    def test_uses_title_and_extraction_date_next_to_pdf(self, tmp_path):
+        result = default_analysis_path(
+            tmp_path / "2411.19870.pdf",
+            "Scaling: Does It Work?",
+            datetime(2026, 7, 30),
+        )
+
+        assert result == tmp_path / "scaling-does-it-work-2026-07-30.md"
+
+    def test_preserves_unicode_and_removes_unsafe_punctuation(self, tmp_path):
+        result = default_analysis_path(
+            tmp_path / "paper.pdf",
+            "理解 AI / safely?",
+            datetime(2026, 7, 30),
+        )
+
+        assert result.name == "理解-ai-safely-2026-07-30.md"
+
+    def test_limits_title_fragment_length(self, tmp_path):
+        result = default_analysis_path(
+            tmp_path / "paper.pdf",
+            "A" * 200,
+            datetime(2026, 7, 30),
+        )
+
+        title_fragment = result.name.removesuffix("-2026-07-30.md")
+        assert len(title_fragment) == MAX_FILENAME_TITLE_LENGTH
 
 
 class TestFormatAnalysis:

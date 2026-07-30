@@ -7,6 +7,7 @@ import getpass
 import os
 import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
 
 from . import __version__
@@ -24,7 +25,7 @@ from .config import (
     set_default_wiki_root,
 )
 from .download import download_pdf, is_url
-from .output import save_analysis
+from .output import default_analysis_path, save_analysis
 from .pdf import DEFAULT_MAX_PAGES, get_pdf_filename, read_pdf_as_base64
 from .providers import AnthropicProvider, OpenAIProvider, OpenRouterProvider
 from .wiki import (
@@ -281,7 +282,10 @@ def cmd_analyze(args):
         max_pages=args.max_pages,
     )
     if not args.print_output:
-        output_path = args.output or str(Path(local_paper_path).with_suffix(".md"))
+        created_at = datetime.now()
+        output_path = args.output or str(
+            default_analysis_path(local_paper_path, result["title"], created_at)
+        )
         save_analysis(
             result["title"],
             result["analysis"],
@@ -289,6 +293,7 @@ def cmd_analyze(args):
             output_path,
             paper_metadata=result["metadata"],
             source=args.paper_path,
+            created_at=created_at,
         )
         print(f"Analysis saved to: {output_path}")
 
