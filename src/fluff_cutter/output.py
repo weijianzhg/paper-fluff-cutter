@@ -9,6 +9,7 @@ from typing import Any
 import yaml
 
 MAX_FILENAME_TITLE_LENGTH = 80
+ARXIV_ID_PATTERN = re.compile(r"\d{4}\.\d{4,5}(?:v\d+)?", re.IGNORECASE)
 
 
 def strip_leading_h1(analysis: str) -> str:
@@ -26,7 +27,9 @@ def default_analysis_path(
     title_slug = title_slug.replace("_", "-").strip("-")
     title_slug = title_slug[:MAX_FILENAME_TITLE_LENGTH].rstrip("-") or "paper"
     extraction_date = (created_at or datetime.now()).strftime("%Y-%m-%d")
-    return Path(pdf_path).with_name(f"{title_slug}-{extraction_date}.md")
+    source_stem = Path(pdf_path).stem
+    source_id = f"-{source_stem.casefold()}" if ARXIV_ID_PATTERN.fullmatch(source_stem) else ""
+    return Path(pdf_path).with_name(f"{title_slug}{source_id}-{extraction_date}.md")
 
 
 def build_paper_properties(

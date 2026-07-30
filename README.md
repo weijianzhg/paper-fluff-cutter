@@ -78,7 +78,8 @@ research-wiki/
 ```
 
 By default, results are printed to the terminal and saved next to the input PDF with a
-recognizable title-and-date filename, such as `scaling-does-it-work-2026-07-30.md`.
+recognizable title-and-date filename. ArXiv notes retain their stable paper ID, for example
+`scaling-does-it-work-2411.19870-2026-07-30.md`.
 Model output streams live during analysis (provider-side streaming), so you see tokens immediately instead of waiting for full completion.
 
 ## Obsidian-ready notes

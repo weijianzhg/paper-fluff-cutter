@@ -23,7 +23,7 @@ class TestDefaultAnalysisPath:
             datetime(2026, 7, 30),
         )
 
-        assert result == tmp_path / "scaling-does-it-work-2026-07-30.md"
+        assert result == tmp_path / "scaling-does-it-work-2411.19870-2026-07-30.md"
 
     def test_preserves_unicode_and_removes_unsafe_punctuation(self, tmp_path):
         result = default_analysis_path(
