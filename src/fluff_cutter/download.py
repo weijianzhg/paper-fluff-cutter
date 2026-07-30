@@ -44,6 +44,33 @@ def normalize_arxiv_url(url: str) -> str:
     return parsed._replace(path=path).geturl()
 
 
+def normalize_github_url(url: str) -> str:
+    """
+    Normalize a GitHub file-view URL to download the raw file.
+
+    Converts paths such as /owner/repo/blob/main/paper.pdf to
+    /owner/repo/raw/main/paper.pdf. GitHub resolves the ref and redirects
+    to the raw file, including when the ref contains slashes.
+
+    Args:
+        url: A GitHub URL.
+
+    Returns:
+        The normalized raw-file URL.
+    """
+    parsed = urlparse(url)
+    if (parsed.hostname or "").lower() not in {"github.com", "www.github.com"}:
+        return url
+
+    path = re.sub(r"^(/[^/]+/[^/]+)/blob/", r"\1/raw/", parsed.path, count=1)
+    return parsed._replace(path=path).geturl()
+
+
+def normalize_pdf_url(url: str) -> str:
+    """Normalize supported paper URLs to direct PDF download URLs."""
+    return normalize_github_url(normalize_arxiv_url(url))
+
+
 def _filename_from_url(url: str) -> str:
     """
     Derive a PDF filename from a URL.
@@ -87,8 +114,7 @@ def download_pdf(url: str, output_dir: Path | None = None) -> Path:
         RuntimeError: If the download fails or the response is not a PDF.
         httpx.HTTPStatusError: If the server returns an error status code.
     """
-    # Normalize arxiv URLs
-    url = normalize_arxiv_url(url)
+    url = normalize_pdf_url(url)
 
     filename = _filename_from_url(url)
     output_dir = output_dir or Path.cwd()
