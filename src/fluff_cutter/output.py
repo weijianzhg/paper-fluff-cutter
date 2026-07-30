@@ -41,7 +41,9 @@ def _source_identity(source_stem: str) -> str:
     identity = truncated or "source"
     if identity != source_stem:
         digest = hashlib.sha256(source_stem.encode("utf-8")).hexdigest()[:8]
-        identity = f"{identity}-{digest}"
+        # `~` cannot appear in _source_slug output, so literal stems cannot
+        # impersonate the generated digest namespace.
+        identity = f"{identity}~{digest}"
     return identity
 
 

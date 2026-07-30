@@ -71,6 +71,21 @@ class TestDefaultAnalysisPath:
         assert generic != underscored
         assert generic != title_named
 
+    def test_digest_namespace_cannot_collide_with_literal_source_stem(self, tmp_path):
+        created_at = datetime(2026, 7, 30)
+        transformed = default_analysis_path(tmp_path / "Foo.pdf", "Same Title", created_at)
+        generated_identity = transformed.stem.removeprefix("same-title-").removesuffix(
+            "-2026-07-30"
+        )
+
+        literal = default_analysis_path(
+            tmp_path / f"{generated_identity}.pdf",
+            "Same Title",
+            created_at,
+        )
+
+        assert transformed != literal
+
     def test_hashes_source_stems_that_share_a_truncated_prefix(self, tmp_path):
         created_at = datetime(2026, 7, 30)
         shared_prefix = "a" * 60
